@@ -12,10 +12,15 @@ private:
     QSqlDatabase db;
     static DbHandler* instance;
 
+private:
+    void openDb();
+    int getOrInsertExerciseId(const QString &exerciseName);
+
 public:
     static DbHandler* getInstance();
-    void openDb();
+    QSqlDatabase& getDb();
 
+    void saveTrain(const QString& date, const QMap<QString, QList<double>> &trainInfo);
 };
 
 #endif // DBHANDLER_H

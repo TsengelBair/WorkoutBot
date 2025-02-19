@@ -1,19 +1,22 @@
 #include <QDebug>
 #include "workoutbot.h"
 #include "parser/parser.h"
+#include "db/dbhandler.h"
 
 WorkoutBot::WorkoutBot(const std::string &token) : bot(token),
     waitForExerciseName(false),
     waitForSet(false),
     editModeOn(false)
 {
-    start();
+//    start();
     setupCommands();
     setupCallbacks();
+    setupMessages();
 }
 
 void WorkoutBot::start()
 {
+    /* Запуск */
     try {
         printf("Bot username: %s\n", bot.getApi().getMe()->username.c_str());
         TgBot::TgLongPoll longPoll(bot);
@@ -25,7 +28,6 @@ void WorkoutBot::start()
         printf("error: %s\n", e.what());
     }
 }
-
 void WorkoutBot::setupCommands()
 {
     bot.getEvents().onCommand("start", [&](TgBot::Message::Ptr message) {
@@ -72,12 +74,16 @@ void WorkoutBot::setupCallbacks()
         } else if (query->data == "get_chart"){
             /// Вз-е с классом Chart
         } else if (query->data == "finish_train"){
-            /// логика обработки, вызов статического метода из класса Parser и вызов DbHandler (синглтон)
+            /// пара<словарь<ключ: упражнение, значение: подходы>, дата_тренировки>
             QPair<QMap<QString, QList<double>>, QString> trainInfoAndDate = Parser::parseWorkoutMessage(currentTrainData);
             qDebug() << "Дата тренировки:" << trainInfoAndDate.second;
             for (auto it = trainInfoAndDate.first.constBegin(); it != trainInfoAndDate.first.constEnd(); ++it) {
                 qDebug() << it.key() << ":" << it.value();
             }
+
+            DbHandler* instance = DbHandler::getInstance();
+            /// Добавить какую то валидацию в этот метод
+            instance->saveTrain(trainInfoAndDate.second, trainInfoAndDate.first);
         }
 
         bot.getApi().answerCallbackQuery(query->id);

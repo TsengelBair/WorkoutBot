@@ -30,5 +30,6 @@ add_executable(workoutBot
   parser/parser.cpp
   db/dbhandler.h
   db/dbhandler.cpp
+  config.h
 )
 target_link_libraries(workoutBot Qt${QT_VERSION_MAJOR}::Core Qt${QT_VERSION_MAJOR}::Sql TgBot ${Boost_LIBRARIES} ${OPENSSL_LIBRARIES} ${CURL_LIBRARIES} pthread)
