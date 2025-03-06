@@ -11,8 +11,8 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_package(QT NAMES Qt6 Qt5 COMPONENTS Core Sql REQUIRED)
-find_package(Qt${QT_VERSION_MAJOR} COMPONENTS Core Sql REQUIRED)
+find_package(QT NAMES Qt6 Qt5 COMPONENTS Widgets Sql REQUIRED)
+find_package(Qt${QT_VERSION_MAJOR} COMPONENTS Widgets Sql REQUIRED)
 
 find_package(Boost REQUIRED COMPONENTS system)
 find_package(OpenSSL REQUIRED)
@@ -33,6 +33,8 @@ add_executable(workoutBot
   parser/parser.cpp
   db/dbhandler.h
   db/dbhandler.cpp
+  chart/chart.h
+  chart/chart.cpp
   config.h
 )
-target_link_libraries(workoutBot Qt${QT_VERSION_MAJOR}::Core Qt${QT_VERSION_MAJOR}::Sql qwt-qt5 TgBot ${Boost_LIBRARIES} ${OPENSSL_LIBRARIES} ${CURL_LIBRARIES} pthread)
+target_link_libraries(workoutBot Qt${QT_VERSION_MAJOR}::Widgets Qt${QT_VERSION_MAJOR}::Sql qwt-qt5 TgBot ${Boost_LIBRARIES} ${OPENSSL_LIBRARIES} ${CURL_LIBRARIES} pthread stdc++fs)

@@ -21,7 +21,7 @@ public:
     QSqlDatabase& getDb();
 
     void saveTrain(const QString& date, const QMap<QString, QList<double>> &trainInfo);
-    QMap<QString, double> getTxtReport();
+    QMap<QString, double> trainData();
 };
 
 #endif // DBHANDLER_H

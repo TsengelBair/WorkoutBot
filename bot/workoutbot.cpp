@@ -1,7 +1,10 @@
 #include <QDebug>
+#include <QScopedPointer>
+
 #include "workoutbot.h"
 #include "parser/parser.h"
 #include "db/dbhandler.h"
+#include "chart/chart.h"
 
 WorkoutBot::WorkoutBot(const std::string &token) : bot(token),
     waitForExerciseName(false),
@@ -80,7 +83,10 @@ void WorkoutBot::setupCallbacks()
 
             bot.getApi().sendMessage(query->message->chat->id, "Добавьте упражнение", nullptr, 0, _keyboard);
         } else if (query->data == "get_chart"){
-            /// Вз-е с классом Chart
+            QScopedPointer<Chart>_chart(new Chart());
+            _chart->createPlot();
+            std::string imgPath = "chart.png";
+            bot.getApi().sendPhoto(query->message->chat->id, TgBot::InputFile::fromFile(imgPath, "image/png"));
         } else if (query->data == "finish_train"){
             /// пара<словарь<ключ: упражнение, значение: подходы>, дата_тренировки>
             QPair<QMap<QString, QList<double>>, QString> trainInfoAndDate = Parser::parseWorkoutMessage(currentTrainData);
@@ -96,7 +102,7 @@ void WorkoutBot::setupCallbacks()
         } else if (query->data == "get_text_report") {
             QString dataStr;
 
-            QMap<QString, double> data = DbHandler::getInstance()->getTxtReport();
+            QMap<QString, double> data = DbHandler::getInstance()->trainData();
             if (data.size() == 0) {
                 bot.getApi().sendMessage(query->message->chat->id, "Ошибка, нет данных");
                 return;

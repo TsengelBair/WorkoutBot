@@ -104,7 +104,7 @@ void DbHandler::saveTrain(const QString &date, const QMap<QString, QList<double>
     }
 }
 
-QMap<QString, double> DbHandler::getTxtReport()
+QMap<QString, double> DbHandler::trainData()
 {
     QMap<QString, double> data;
 
