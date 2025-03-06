@@ -104,6 +104,32 @@ void DbHandler::saveTrain(const QString &date, const QMap<QString, QList<double>
     }
 }
 
+QMap<QString, double> DbHandler::getTxtReport()
+{
+    QMap<QString, double> data;
+
+    QSqlQuery query;
+    QString queryStr = "SELECT workouts.id, workouts.workout_date, SUM(sets.tonnage) "
+                  "FROM workouts "
+                  "JOIN sets ON workouts.id = sets.workout_id "
+                  "GROUP BY workouts.id, workouts.workout_date "
+                  "ORDER BY workouts.workout_date;";
+
+    if (!query.exec(queryStr)) {
+        qDebug() << "Ошибка выполнения запроса:" << query.lastError().text();
+        return data;
+    }
+
+    while(query.next()){
+        QString workoutDate = query.value(1).toString();
+        double totalTonnage = query.value(2).toDouble();
+
+        data.insert(workoutDate, totalTonnage);
+    }
+
+    return data;
+}
+
 QSqlDatabase &DbHandler::getDb()
 {
     if (!instance){

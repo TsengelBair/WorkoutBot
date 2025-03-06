@@ -22,6 +22,9 @@ include_directories(${Boost_INCLUDE_DIRS})
 include_directories(${OPENSSL_INCLUDE_DIR})
 include_directories(${CURL_INCLUDE_DIRS})
 
+include_directories(/usr/include/qwt)
+
+
 add_executable(workoutBot
   main.cpp
   bot/workoutbot.h
@@ -32,4 +35,4 @@ add_executable(workoutBot
   db/dbhandler.cpp
   config.h
 )
-target_link_libraries(workoutBot Qt${QT_VERSION_MAJOR}::Core Qt${QT_VERSION_MAJOR}::Sql TgBot ${Boost_LIBRARIES} ${OPENSSL_LIBRARIES} ${CURL_LIBRARIES} pthread)
+target_link_libraries(workoutBot Qt${QT_VERSION_MAJOR}::Core Qt${QT_VERSION_MAJOR}::Sql qwt-qt5 TgBot ${Boost_LIBRARIES} ${OPENSSL_LIBRARIES} ${CURL_LIBRARIES} pthread)

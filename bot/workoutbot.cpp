@@ -44,8 +44,12 @@ void WorkoutBot::setupCommands()
         getChartBtn->text = "Получить отчет в виде графика";
         getChartBtn->callbackData = "get_chart";
 
+        std::shared_ptr<TgBot::InlineKeyboardButton> getTextReportBtn = std::make_shared<TgBot::InlineKeyboardButton>();
+        getTextReportBtn->text = "Получить отчет в виде текста";
+        getTextReportBtn->callbackData = "get_text_report";
+
         TgBot::InlineKeyboardMarkup::Ptr keyboard = std::make_shared<TgBot::InlineKeyboardMarkup>();
-        keyboard->inlineKeyboard.push_back({btnStart, getChartBtn});
+        keyboard->inlineKeyboard.push_back({btnStart, getChartBtn, getTextReportBtn});
 
         bot.getApi().sendMessage(message->chat->id, "Выберите действие:", nullptr, 0, keyboard);
     });
@@ -81,9 +85,23 @@ void WorkoutBot::setupCallbacks()
                 qDebug() << it.key() << ":" << it.value();
             }
 
-            DbHandler* instance = DbHandler::getInstance();
+//            DbHandler* instance = DbHandler::getInstance();
             /// Добавить какую то валидацию в этот метод
-            instance->saveTrain(trainInfoAndDate.second, trainInfoAndDate.first);
+            DbHandler::getInstance()->saveTrain(trainInfoAndDate.second, trainInfoAndDate.first);
+        } else if (query->data == "get_text_report") {
+            QString dataStr;
+
+            QMap<QString, double> data = DbHandler::getInstance()->getTxtReport();
+            if (data.size() == 0) {
+                bot.getApi().sendMessage(query->message->chat->id, "Ошибка, нет данных");
+                return;
+            }
+
+            for (auto it = data.constBegin(); it != data.constEnd(); ++it){
+                dataStr += it.key() + ": " + QString::number(it.value()) + "\n";
+            }
+
+            bot.getApi().sendMessage(query->message->chat->id, dataStr.toStdString());
         }
 
         bot.getApi().answerCallbackQuery(query->id);
