@@ -69,16 +69,16 @@ void WorkoutBot::setupCallbacks()
             addSetBtn->text = "+ подход";
 
             std::shared_ptr<TgBot::KeyboardButton> editBtn = std::make_shared<TgBot::KeyboardButton>();
-            editBtn->text = "Отредактировать вручуную";
+            editBtn->text = "Отредактировать вручную";
 
             std::shared_ptr<TgBot::KeyboardButton> finishBtn = std::make_shared<TgBot::KeyboardButton>();
             finishBtn->text = "Завершить тренировку";
 
             std::shared_ptr<TgBot::KeyboardButton> menuBtn = std::make_shared<TgBot::KeyboardButton>();
-            menuBtn->text = "Меню";
+            menuBtn->text = "меню";
 
             std::shared_ptr<TgBot::ReplyKeyboardMarkup> _keyboard = std::make_shared<TgBot::ReplyKeyboardMarkup>();
-            _keyboard->keyboard.push_back({addExerciseBtn, addSetBtn, editBtn /*finishBtn, menuBtn*/});
+            _keyboard->keyboard.push_back({addExerciseBtn, addSetBtn, editBtn});
             _keyboard->keyboard.push_back({finishBtn, menuBtn});
 
             bot.getApi().sendMessage(query->message->chat->id, "Добавьте упражнение", nullptr, 0, _keyboard);
@@ -137,14 +137,13 @@ void WorkoutBot::setupMessages()
             keyboard->inlineKeyboard.push_back({btnYes, btnNo});
 
             bot.getApi().sendMessage(message->chat->id, "Выберите действие:", nullptr, 0, keyboard);
-        } else if (message->text == "Отредактировать вручуную"){
+        } else if (message->text == "Отредактировать вручную"){
             bot.getApi().sendMessage(message->chat->id, "Скопируйте текст, отредактируйте и отправьте сообщением");
             editModeOn = true;
 
         } else if (editModeOn){
-            currentTrainData = QString::fromStdString(message->text);
+            currentTrainData = QString::fromStdString(message->text + "\n");
             editModeOn = false;
-            qDebug() << currentTrainData;
         } else if (message->text == "+ упражнение" && !waitForExerciseName){
             bot.getApi().sendMessage(message->chat->id, "Введите название упражнения");
             waitForExerciseName = true;
@@ -153,18 +152,20 @@ void WorkoutBot::setupMessages()
             /// Если это первое упражнение
             if (currentTrainData.isEmpty()) {
                 Parser::init(currentTrainData, QString::fromStdString(message->text));
-                bot.getApi().sendMessage(message->chat->id, "После ввода упражнения, нажмите кнопку + подход");
             } else {
                 currentTrainData += QString::fromStdString(message->text) + "\n";
             }
 
             bot.getApi().sendMessage(message->chat->id, currentTrainData.toStdString());
+            bot.getApi().sendMessage(message->chat->id, "После ввода названи упражнения не забудьте нажать +подход");
             waitForExerciseName = false;
         } else if (message->text == "+ подход" && !waitForSet){
             bot.getApi().sendMessage(message->chat->id, "Введите подход в формате вес * количество повторений."
                                                         " К примеру 75*10 и отправьте как сообщение");
             waitForSet = true;
-        } else if (waitForSet) {
+        } else if (message->text == "+ подход" && waitForSet){
+            bot.getApi().sendMessage(message->chat->id, "Итак жду подхода");
+        } else if (waitForSet && message->text != "меню") {
             /// Вызвать static метод парсера
             QString setInfo = Parser::calcSetTonnage(QString::fromStdString(message->text));
             if (setInfo == "Ошибка! Неверный формат строки"){
@@ -175,7 +176,7 @@ void WorkoutBot::setupMessages()
                 currentTrainData += setInfo + "\n";
                 bot.getApi().sendMessage(message->chat->id, currentTrainData.toStdString());
             }
-        } else if (message->text == "Меню"){
+        } else if (message->text == "меню"){
             /// Дублирую код (потом исправить)
             std::shared_ptr<TgBot::InlineKeyboardButton> btnStart = std::make_shared<TgBot::InlineKeyboardButton>();
             btnStart->text = "Тренировка";
