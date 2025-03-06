@@ -9,12 +9,13 @@ class Chart : public QMainWindow
     Q_OBJECT
 
 public:
-    Chart(QWidget *parent = nullptr);
+    Chart(std::int64_t id, QWidget *parent = nullptr);
     ~Chart();
 
     void createPlot();
 
 private:
+    std::int64_t _id;
     QwtPlot* _plot;
 };
 #endif // CHART_H

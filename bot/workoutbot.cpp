@@ -11,7 +11,6 @@ WorkoutBot::WorkoutBot(const std::string &token) : bot(token),
     waitForSet(false),
     editModeOn(false)
 {
-//    start();
     setupCommands();
     setupCallbacks();
     setupMessages();
@@ -35,7 +34,7 @@ void WorkoutBot::setupCommands()
 {
     bot.getEvents().onCommand("start", [&](TgBot::Message::Ptr message) {
         bot.getApi().sendMessage(message->chat->id, "Привет! Я помогу тебе отслеживать свой прогресс!"
-                                                    " Для того, чтобы начать, отправь мне команду  /run");
+                                                    " Для того, чтобы начать, отправь мне команду /run");
     });
 
     bot.getEvents().onCommand("run", [&](TgBot::Message::Ptr message) {
@@ -83,10 +82,12 @@ void WorkoutBot::setupCallbacks()
 
             bot.getApi().sendMessage(query->message->chat->id, "Добавьте упражнение", nullptr, 0, _keyboard);
         } else if (query->data == "get_chart"){
-            QScopedPointer<Chart>_chart(new Chart());
+            QScopedPointer<Chart>_chart(new Chart(query->message->chat->id));
             _chart->createPlot();
-            std::string imgPath = "chart.png";
-            bot.getApi().sendPhoto(query->message->chat->id, TgBot::InputFile::fromFile(imgPath, "image/png"));
+            /// Для каждого пользователя будет храниться по одной картинке в текущей директории, файл будет называться также как и id чата
+            QString path = QString::number(query->message->chat->id) + ".png";
+            qDebug() << "Path to file:" << path;
+            bot.getApi().sendPhoto(query->message->chat->id, TgBot::InputFile::fromFile(path.toStdString(), "image/png"));
         } else if (query->data == "finish_train"){
             /// пара<словарь<ключ: упражнение, значение: подходы>, дата_тренировки>
             QPair<QMap<QString, QList<double>>, QString> trainInfoAndDate = Parser::parseWorkoutMessage(currentTrainData);

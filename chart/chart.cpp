@@ -8,8 +8,9 @@
 #include "chart.h"
 #include "db/dbhandler.h"
 
-Chart::Chart(QWidget *parent)
-    : QMainWindow(parent)
+Chart::Chart(std::int64_t id, QWidget *parent)
+    : QMainWindow(parent),
+      _id(id)
 {
     _plot = new QwtPlot(this);
     setCentralWidget(_plot);
@@ -61,7 +62,7 @@ void Chart::createPlot()
 
     /// Сохранение графика как PNG
     QPixmap pixmap = _plot->grab();
-    QString path = "chart.png"; /// возможно сохранять изображение по id пользователя вместо стандартного chart.png
+    QString path = QString::number(_id) + ".png";
     if (pixmap.save(path)) {
         qDebug() << "OK";
     } else {
