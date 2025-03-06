@@ -37,15 +37,15 @@ void WorkoutBot::setupCommands()
 
     bot.getEvents().onCommand("run", [&](TgBot::Message::Ptr message) {
         std::shared_ptr<TgBot::InlineKeyboardButton> btnStart = std::make_shared<TgBot::InlineKeyboardButton>();
-        btnStart->text = "Начать тренировку";
+        btnStart->text = "Тренировка";
         btnStart->callbackData = "start_training";
 
         std::shared_ptr<TgBot::InlineKeyboardButton> getChartBtn = std::make_shared<TgBot::InlineKeyboardButton>();
-        getChartBtn->text = "Получить отчет в виде графика";
+        getChartBtn->text = "График";
         getChartBtn->callbackData = "get_chart";
 
         std::shared_ptr<TgBot::InlineKeyboardButton> getTextReportBtn = std::make_shared<TgBot::InlineKeyboardButton>();
-        getTextReportBtn->text = "Получить отчет в виде текста";
+        getTextReportBtn->text = "Отчет";
         getTextReportBtn->callbackData = "get_text_report";
 
         TgBot::InlineKeyboardMarkup::Ptr keyboard = std::make_shared<TgBot::InlineKeyboardMarkup>();
@@ -60,10 +60,10 @@ void WorkoutBot::setupCallbacks()
     bot.getEvents().onCallbackQuery([&](TgBot::CallbackQuery::Ptr query) {
         if (query->data == "start_training") {
             std::shared_ptr<TgBot::KeyboardButton> addExerciseBtn = std::make_shared<TgBot::KeyboardButton>();
-            addExerciseBtn->text = "Добавить упражнение";
+            addExerciseBtn->text = "+ упражнение";
 
             std::shared_ptr<TgBot::KeyboardButton> addSetBtn = std::make_shared<TgBot::KeyboardButton>();
-            addSetBtn->text = "Добавить подход";
+            addSetBtn->text = "+ подход";
 
             std::shared_ptr<TgBot::KeyboardButton> editBtn = std::make_shared<TgBot::KeyboardButton>();
             editBtn->text = "Отредактировать вручуную";
@@ -71,10 +71,14 @@ void WorkoutBot::setupCallbacks()
             std::shared_ptr<TgBot::KeyboardButton> finishBtn = std::make_shared<TgBot::KeyboardButton>();
             finishBtn->text = "Завершить тренировку";
 
-            std::shared_ptr<TgBot::ReplyKeyboardMarkup> _keyboard = std::make_shared<TgBot::ReplyKeyboardMarkup>();
-            _keyboard->keyboard.push_back({addExerciseBtn, addSetBtn, editBtn, finishBtn});
+            std::shared_ptr<TgBot::KeyboardButton> menuBtn = std::make_shared<TgBot::KeyboardButton>();
+            menuBtn->text = "Меню";
 
-            bot.getApi().sendMessage(query->message->chat->id, "Хорошей тренировки!", nullptr, 0, _keyboard);
+            std::shared_ptr<TgBot::ReplyKeyboardMarkup> _keyboard = std::make_shared<TgBot::ReplyKeyboardMarkup>();
+            _keyboard->keyboard.push_back({addExerciseBtn, addSetBtn, editBtn /*finishBtn, menuBtn*/});
+            _keyboard->keyboard.push_back({finishBtn, menuBtn});
+
+            bot.getApi().sendMessage(query->message->chat->id, "Добавьте упражнение", nullptr, 0, _keyboard);
         } else if (query->data == "get_chart"){
             /// Вз-е с классом Chart
         } else if (query->data == "finish_train"){
@@ -84,10 +88,11 @@ void WorkoutBot::setupCallbacks()
             for (auto it = trainInfoAndDate.first.constBegin(); it != trainInfoAndDate.first.constEnd(); ++it) {
                 qDebug() << it.key() << ":" << it.value();
             }
-
-//            DbHandler* instance = DbHandler::getInstance();
             /// Добавить какую то валидацию в этот метод
             DbHandler::getInstance()->saveTrain(trainInfoAndDate.second, trainInfoAndDate.first);
+            waitForExerciseName = false;
+            waitForSet = false;
+            editModeOn = false;
         } else if (query->data == "get_text_report") {
             QString dataStr;
 
@@ -98,7 +103,7 @@ void WorkoutBot::setupCallbacks()
             }
 
             for (auto it = data.constBegin(); it != data.constEnd(); ++it){
-                dataStr += it.key() + ": " + QString::number(it.value()) + "\n";
+                dataStr += it.key() + ": " + QString::number(it.value()) + "кг" +  "\n";
             }
 
             bot.getApi().sendMessage(query->message->chat->id, dataStr.toStdString());
@@ -134,7 +139,7 @@ void WorkoutBot::setupMessages()
             currentTrainData = QString::fromStdString(message->text);
             editModeOn = false;
             qDebug() << currentTrainData;
-        } else if (message->text == "Добавить упражнение" && !waitForExerciseName){
+        } else if (message->text == "+ упражнение" && !waitForExerciseName){
             bot.getApi().sendMessage(message->chat->id, "Введите название упражнения");
             waitForExerciseName = true;
             waitForSet = false;
@@ -142,14 +147,14 @@ void WorkoutBot::setupMessages()
             /// Если это первое упражнение
             if (currentTrainData.isEmpty()) {
                 Parser::init(currentTrainData, QString::fromStdString(message->text));
-                bot.getApi().sendMessage(message->chat->id, "После ввода упражнения, нажмите кнопку добавить подход");
+                bot.getApi().sendMessage(message->chat->id, "После ввода упражнения, нажмите кнопку + подход");
             } else {
                 currentTrainData += QString::fromStdString(message->text) + "\n";
             }
 
             bot.getApi().sendMessage(message->chat->id, currentTrainData.toStdString());
             waitForExerciseName = false;
-        } else if (message->text == "Добавить подход" && !waitForSet){
+        } else if (message->text == "+ подход" && !waitForSet){
             bot.getApi().sendMessage(message->chat->id, "Введите подход в формате вес * количество повторений."
                                                         " К примеру 75*10 и отправьте как сообщение");
             waitForSet = true;
@@ -164,6 +169,24 @@ void WorkoutBot::setupMessages()
                 currentTrainData += setInfo + "\n";
                 bot.getApi().sendMessage(message->chat->id, currentTrainData.toStdString());
             }
+        } else if (message->text == "Меню"){
+            /// Дублирую код (потом исправить)
+            std::shared_ptr<TgBot::InlineKeyboardButton> btnStart = std::make_shared<TgBot::InlineKeyboardButton>();
+            btnStart->text = "Тренировка";
+            btnStart->callbackData = "start_training";
+
+            std::shared_ptr<TgBot::InlineKeyboardButton> getChartBtn = std::make_shared<TgBot::InlineKeyboardButton>();
+            getChartBtn->text = "График";
+            getChartBtn->callbackData = "get_chart";
+
+            std::shared_ptr<TgBot::InlineKeyboardButton> getTextReportBtn = std::make_shared<TgBot::InlineKeyboardButton>();
+            getTextReportBtn->text = "Отчет";
+            getTextReportBtn->callbackData = "get_text_report";
+
+            TgBot::InlineKeyboardMarkup::Ptr keyboard = std::make_shared<TgBot::InlineKeyboardMarkup>();
+            keyboard->inlineKeyboard.push_back({btnStart, getChartBtn, getTextReportBtn});
+
+            bot.getApi().sendMessage(message->chat->id, "Выберите действие:", nullptr, 0, keyboard);
         }
     });
 }
