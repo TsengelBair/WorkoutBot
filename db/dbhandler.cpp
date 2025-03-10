@@ -33,62 +33,72 @@ void DbHandler::openDb()
 {
     if (db.open()){
         qDebug() << "Успешное подключение к БД";
-        createTables();
+        bool ok = createTables();
+        if (ok) qDebug() << "Таблицы созданы успешно";
     } else {
         qDebug() << "Ошибка подключения к БД" << db.lastError().text();
     }
 }
 
-void DbHandler::createTables()
+bool DbHandler::createTables()
 {
     QSqlQuery query;
 
-    /// Создание таблицы workouts
     if (!query.exec("CREATE TABLE IF NOT EXISTS workouts ("
                     "id INTEGER PRIMARY KEY AUTOINCREMENT, "
-                    "workout_date DATE NOT NULL)")) {
+                    "tg_id INTEGER NOT NULL, "
+                    "workout_date DATE NOT NULL, "
+                    "UNIQUE(tg_id, workout_date))")) { /// ограничение уникальности, только одна тренировка за день
         qDebug() << "Ошибка при создании таблицы workouts:" << query.lastError();
+        return 0;
     }
 
-    /// Создание таблицы exercises
     if (!query.exec("CREATE TABLE IF NOT EXISTS exercises ("
-                    "id INTEGER PRIMARY KEY AUTOINCREMENT, "
-                    "exercise_name TEXT NOT NULL UNIQUE)")) {
+                        "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+                        "tg_id INTEGER NOT NULL, "
+                        "exercise_name TEXT NOT NULL, "
+                        "UNIQUE(tg_id, exercise_name))")) {
         qDebug() << "Ошибка при создании таблицы exercises:" << query.lastError();
+        return 0;
     }
 
-    /// Создание таблицы sets
     if (!query.exec("CREATE TABLE IF NOT EXISTS sets ("
-                    "id INTEGER PRIMARY KEY AUTOINCREMENT, "
-                    "workout_id INTEGER NOT NULL, "
-                    "exercise_id INTEGER NOT NULL, "
-                    "tonnage REAL NOT NULL, "
-                    "FOREIGN KEY (workout_id) REFERENCES workouts(id) ON DELETE CASCADE, "
-                    "FOREIGN KEY (exercise_id) REFERENCES exercises(id) ON DELETE CASCADE)")) {
+                        "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+                        "tg_id INTEGER NOT NULL, "
+                        "workout_id INTEGER NOT NULL, "
+                        "exercise_id INTEGER NOT NULL, "
+                        "tonnage REAL NOT NULL, "
+                        "FOREIGN KEY (workout_id) REFERENCES workouts(id) ON DELETE CASCADE, "
+                        "FOREIGN KEY (exercise_id) REFERENCES exercises(id) ON DELETE CASCADE)")) {
         qDebug() << "Ошибка при создании таблицы sets:" << query.lastError();
+        return 0;
     }
+
+    return 1;
 }
 
+
 /* Функция для получения ID упражнения (либо INSERT либо возврат уже имеющегося) */
-int DbHandler::getOrInsertExerciseId(const QString &exerciseName) {
+int DbHandler::getOrInsertExerciseId(const std::int64_t tg_id, const QString &exerciseName) {
     QSqlQuery query;
 
-    // Попробуем вставить новое упражнение
-    query.prepare("INSERT INTO exercises (exercise_name) VALUES (:exerciseName)");
+    query.prepare("INSERT INTO exercises (tg_id, exercise_name) VALUES (:tg_id, :exerciseName)");
+    query.bindValue(":tg_id", QVariant::fromValue(tg_id));
     query.bindValue(":exerciseName", exerciseName);
 
     if (!query.exec()) {
         // Если ошибка, проверяем, не существует ли уже такое упражнение
         if (query.lastError().text().contains("UNIQUE constraint failed")) {
             // Упражнение уже существует, получаем его ID
-            query.prepare("SELECT id FROM exercises WHERE exercise_name = :exerciseName");
+            query.prepare("SELECT id FROM exercises WHERE tg_id = :tg_id AND exercise_name = :exerciseName");
+            query.bindValue(":tg_id", QVariant::fromValue(tg_id));
             query.bindValue(":exerciseName", exerciseName);
             if (!query.exec()) {
                 qDebug() << "Ошибка при select из таблицы exercises:" << query.lastError();
                 return -1;
             }
             if (query.next()) {
-                return query.value(0).toInt();
+                return query.value(0).toInt(); // Возвращаем ID упражнения
             }
         } else {
             qDebug() << "Ошибка при insert в таблицу exercises:" << query.lastError();
@@ -100,66 +110,85 @@ int DbHandler::getOrInsertExerciseId(const QString &exerciseName) {
     return query.lastInsertId().toInt();
 }
 
-bool DbHandler::saveTrain(const QString &date, const QMap<QString, QList<double> > &trainInfo)
+bool DbHandler::saveTrain(const std::int64_t tg_id, const QString &date, const QMap<QString, QList<double>> &trainInfo)
 {
     QSqlQuery query;
-    query.prepare("INSERT INTO workouts (workout_date) VALUES (:date)");
+    query.prepare("INSERT INTO workouts (tg_id, workout_date) VALUES (:tg_id, :date)");
+    query.bindValue(":tg_id", QVariant::fromValue(tg_id));
     query.bindValue(":date", QDate::fromString(date, "dd-MM-yyyy"));
 
     if (!query.exec()){
-        qDebug() << "Ошибка при insert в основную таблицу";
-        return 0;
+        qDebug() << "Ошибка при insert в основную таблицу" << query.lastError();
+        return false;
     }
 
-    /// Получаем ID последней вставленной записи
-    int workoutId = query.lastInsertId().toInt();
+    // Получаем ID последней вставленной записи по tg_id и workout_date
+    query.prepare("SELECT id FROM workouts WHERE tg_id = :tg_id AND workout_date = :date");
+    query.bindValue(":tg_id", QVariant::fromValue(tg_id));
+    query.bindValue(":date", QDate::fromString(date, "dd-MM-yyyy"));
 
-    /// INSERT в таблицу с упражнениями, получаем id упражнения и выполним в цикле insertы в таблицу sets
+    if (!query.exec()) {
+        qDebug() << "Ошибка при select из таблицы workouts:" << query.lastError();
+        return false;
+    }
+
+    int workoutId = -1; // Инициализируем переменную для ID тренировки
+    if (query.next()) {
+        workoutId = query.value(0).toInt(); // Получаем ID последней вставленной записи
+    } else {
+        qDebug() << "Не удалось получить ID последней вставленной записи";
+        return false;
+    }
+
+    // INSERT в таблицу с упражнениями, получаем id упражнения и выполним в цикле insertы в таблицу sets
     for (const auto &exercise : trainInfo.keys()) {
-        int exerciseId = getOrInsertExerciseId(exercise);
+        int exerciseId = getOrInsertExerciseId(tg_id, exercise);
         if (exerciseId == -1) {
-//            qDebug() << "Ошибка с id упражнения";
-//            continue;
-            return 0;
+            return false;
         }
 
-        /// Вставляем данные в таблицу sets
+        // Вставляем данные в таблицу sets
         for (double tonnage : trainInfo[exercise]) {
             QSqlQuery setQuery;
-            setQuery.prepare("INSERT INTO sets (workout_id, exercise_id, tonnage) VALUES (:workoutId, :exerciseId, :tonnage)");
+            setQuery.prepare("INSERT INTO sets (tg_id, workout_id, exercise_id, tonnage) VALUES (:tg_id, :workoutId, :exerciseId, :tonnage)");
+            setQuery.bindValue(":tg_id", QVariant::fromValue(tg_id));
             setQuery.bindValue(":workoutId", workoutId);
             setQuery.bindValue(":exerciseId", exerciseId);
             setQuery.bindValue(":tonnage", tonnage);
 
             if (!setQuery.exec()) {
                 qDebug() << "Ошибка при insert в таблицу sets:" << setQuery.lastError();
-                return 0;
+                return false;
             }
         }
     }
 
-    return 1;
+    return true;
 }
 
-QMap<QString, double> DbHandler::trainData()
+QMap<QString, double> DbHandler::trainData(const std::int64_t tg_id)
 {
     QMap<QString, double> data;
 
     QSqlQuery query;
-    QString queryStr = "SELECT workouts.id, workouts.workout_date, SUM(sets.tonnage) "
+    QString queryStr = "SELECT workouts.workout_date, SUM(sets.tonnage) AS total_tonnage "
                        "FROM workouts "
                        "JOIN sets ON workouts.id = sets.workout_id "
-                       "GROUP BY workouts.id, workouts.workout_date "
+                       "WHERE workouts.tg_id = :tg_id "
+                       "GROUP BY workouts.workout_date "
                        "ORDER BY workouts.workout_date;";
 
-    if (!query.exec(queryStr)) {
+    query.prepare(queryStr);
+    query.bindValue(":tg_id", QVariant::fromValue(tg_id));
+
+    if (!query.exec()) {
         qDebug() << "Ошибка выполнения запроса:" << query.lastError().text();
         return data;
     }
 
-    while(query.next()){
-        QString workoutDate = query.value(1).toString();
-        double totalTonnage = query.value(2).toDouble();
+    while (query.next()) {
+        QString workoutDate = query.value(0).toString();
+        double totalTonnage = query.value(1).toDouble();
 
         data.insert(workoutDate, totalTonnage);
     }

@@ -82,6 +82,12 @@ void WorkoutBot::setupCallbacks()
 
             bot.getApi().sendMessage(query->message->chat->id, "Добавьте упражнение", nullptr, 0, _keyboard);
         } else if (query->data == "get_chart"){
+            QMap<QString, double> data = DbHandler::getInstance()->trainData(query->message->chat->id);
+            if (data.size() == 0) {
+                bot.getApi().sendMessage(query->message->chat->id, "Ошибка, нет данных для построения графика");
+                return;
+            }
+
             QScopedPointer<Chart>_chart(new Chart(query->message->chat->id));
             _chart->createPlot();
             /// Для каждого пользователя будет храниться по одной картинке в текущей директории, файл будет называться также как и id чата
@@ -89,6 +95,10 @@ void WorkoutBot::setupCallbacks()
             qDebug() << "Path to file:" << path;
             bot.getApi().sendPhoto(query->message->chat->id, TgBot::InputFile::fromFile(path.toStdString(), "image/png"));
         } else if (query->data == "finish_train"){
+            if (currentTrainData.isEmpty()){
+                bot.getApi().sendMessage(query->message->chat->id, "Ошибка, тренировка не может быть пустой");
+                return;
+            }
             /// пара<словарь<ключ: упражнение, значение: подходы>, дата_тренировки>
             QPair<QMap<QString, QList<double>>, QString> trainInfoAndDate = Parser::parseWorkoutMessage(currentTrainData);
             qDebug() << "Дата тренировки:" << trainInfoAndDate.second;
@@ -96,7 +106,7 @@ void WorkoutBot::setupCallbacks()
                 qDebug() << it.key() << ":" << it.value();
             }
             /// Добавить какую то валидацию в этот метод
-            bool ok = DbHandler::getInstance()->saveTrain(trainInfoAndDate.second, trainInfoAndDate.first);
+            bool ok = DbHandler::getInstance()->saveTrain(query->message->chat->id, trainInfoAndDate.second, trainInfoAndDate.first);
             if (ok) {
                 waitForExerciseName = false;
                 waitForSet = false;
@@ -109,7 +119,7 @@ void WorkoutBot::setupCallbacks()
         } else if (query->data == "get_text_report") {
             QString dataStr;
 
-            QMap<QString, double> data = DbHandler::getInstance()->trainData();
+            QMap<QString, double> data = DbHandler::getInstance()->trainData(query->message->chat->id);
             if (data.size() == 0) {
                 bot.getApi().sendMessage(query->message->chat->id, "Ошибка, нет данных");
                 return;

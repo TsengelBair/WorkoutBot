@@ -34,7 +34,7 @@ void Chart::createPlot()
     QwtSymbol *symbol = new QwtSymbol(QwtSymbol::Ellipse, QBrush(Qt::yellow), QPen(Qt::red, 2), QSize(8, 8));
     curve->setSymbol(symbol);
 
-    QMap<QString, double> data = DbHandler::getInstance()->trainData();
+    QMap<QString, double> data = DbHandler::getInstance()->trainData(_id);
 
     /// Использование QVector для хранения точек
     QVector<QPointF> points;
