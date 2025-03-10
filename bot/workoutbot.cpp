@@ -96,10 +96,16 @@ void WorkoutBot::setupCallbacks()
                 qDebug() << it.key() << ":" << it.value();
             }
             /// Добавить какую то валидацию в этот метод
-            DbHandler::getInstance()->saveTrain(trainInfoAndDate.second, trainInfoAndDate.first);
-            waitForExerciseName = false;
-            waitForSet = false;
-            editModeOn = false;
+            bool ok = DbHandler::getInstance()->saveTrain(trainInfoAndDate.second, trainInfoAndDate.first);
+            if (ok) {
+                waitForExerciseName = false;
+                waitForSet = false;
+                editModeOn = false;
+                bot.getApi().sendMessage(query->message->chat->id, "Тренировка успешно сохранена");
+            } else {
+                bot.getApi().sendMessage(query->message->chat->id, "Ошибка, попробуйте еще раз");
+            }
+
         } else if (query->data == "get_text_report") {
             QString dataStr;
 
@@ -145,6 +151,7 @@ void WorkoutBot::setupMessages()
         } else if (editModeOn){
             currentTrainData = QString::fromStdString(message->text + "\n");
             editModeOn = false;
+            bot.getApi().sendMessage(message->chat->id, "Текст успешно отформатирован");
         } else if (message->text == "+ упражнение" && !waitForExerciseName){
             bot.getApi().sendMessage(message->chat->id, "Введите название упражнения");
             waitForExerciseName = true;

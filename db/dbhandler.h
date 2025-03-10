@@ -14,13 +14,14 @@ private:
 
 private:
     void openDb();
+    void createTables();
     int getOrInsertExerciseId(const QString &exerciseName);
 
 public:
     static DbHandler* getInstance();
     QSqlDatabase& getDb();
 
-    void saveTrain(const QString& date, const QMap<QString, QList<double>> &trainInfo);
+    bool saveTrain(const QString& date, const QMap<QString, QList<double>> &trainInfo);
     QMap<QString, double> trainData();
 };
 
