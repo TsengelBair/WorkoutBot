@@ -16,6 +16,24 @@ private:
     void setupCallbacks();
     void setupMessages();
 
+/// переиспользуемые виджеты
+private:
+    std::shared_ptr<TgBot::InlineKeyboardButton> btnStart;
+    std::shared_ptr<TgBot::InlineKeyboardButton> getChartBtn;
+    std::shared_ptr<TgBot::InlineKeyboardButton> getTextReportBtn;
+    TgBot::InlineKeyboardMarkup::Ptr _inlineKeyboard;
+
+    std::shared_ptr<TgBot::KeyboardButton> addExerciseBtn;
+    std::shared_ptr<TgBot::KeyboardButton> addSetBtn;
+    std::shared_ptr<TgBot::KeyboardButton> editBtn;
+    std::shared_ptr<TgBot::KeyboardButton> finishBtn;
+    std::shared_ptr<TgBot::KeyboardButton> menuBtn;
+    std::shared_ptr<TgBot::ReplyKeyboardMarkup> _keyboard;
+
+    std::shared_ptr<TgBot::InlineKeyboardButton> btnYes;
+    std::shared_ptr<TgBot::InlineKeyboardButton> btnNo;
+    TgBot::InlineKeyboardMarkup::Ptr answerKeyboard;
+
 private:
     TgBot::Bot bot;
     QString currentTrainData;
