@@ -65,12 +65,10 @@ WorkoutBot::WorkoutBot(const std::string &token) : bot(token),
 
 void WorkoutBot::start()
 {
-    /* Запуск */
+    /// Запуск
     try {
-        printf("Bot username: %s\n", bot.getApi().getMe()->username.c_str());
         TgBot::TgLongPoll longPoll(bot);
         while (true) {
-            printf("Long poll started\n");
             longPoll.start();
         }
     } catch (TgBot::TgException& e) {
@@ -103,22 +101,23 @@ void WorkoutBot::setupCallbacks()
 
             QScopedPointer<Chart>_chart(new Chart(query->message->chat->id));
             _chart->createPlot();
-            /// Для каждого пользователя будет храниться по одной картинке в текущей директории, файл будет называться также как и id чата
+            /// Для каждого пользователя будет храниться по одной картинке в директории charts, название файла -> id чата
             QString path = QString::number(query->message->chat->id) + ".png";
             bot.getApi().sendPhoto(query->message->chat->id, TgBot::InputFile::fromFile(path.toStdString(), "image/png"));
         } else if (query->data == "finish_train"){
-            if (currentTrainData.isEmpty()){
+            if (!usersTrainData.contains(query->message->chat->id) || usersTrainData.value(query->message->chat->id).isEmpty()) {
                 bot.getApi().sendMessage(query->message->chat->id, "Ошибка, тренировка не может быть пустой");
                 return;
             }
             /// пара<словарь<ключ: упражнение, значение: подходы>, дата_тренировки>
-            QPair<QMap<QString, QList<double>>, QString> trainInfoAndDate = Parser::parseWorkoutMessage(currentTrainData);
-            /// Добавить какую то валидацию в этот метод
+            QPair<QMap<QString, QList<double>>, QString> trainInfoAndDate = Parser::parseWorkoutMessage(usersTrainData.value(query->message->chat->id));
             bool ok = DbHandler::getInstance()->saveTrain(query->message->chat->id, trainInfoAndDate.second, trainInfoAndDate.first);
             if (ok) {
+                /// После успешного сохранения, сбрасываем маркеры, позволяющие отслеживать состояние бота
                 waitForExerciseName = false;
                 waitForSet = false;
                 editModeOn = false;
+                usersTrainData.remove(query->message->chat->id);
                 bot.getApi().sendMessage(query->message->chat->id, "Тренировка успешно сохранена");
             } else {
                 bot.getApi().sendMessage(query->message->chat->id, "Ошибка, попробуйте еще раз");
@@ -154,9 +153,8 @@ void WorkoutBot::setupMessages()
         } else if (message->text == "Отредактировать вручную"){
             bot.getApi().sendMessage(message->chat->id, "Скопируйте текст, отредактируйте и отправьте сообщением");
             editModeOn = true;
-
         } else if (editModeOn){
-            currentTrainData = QString::fromStdString(message->text + "\n");
+            usersTrainData[message->chat->id] = QString::fromStdString(message->text + "\n");
             editModeOn = false;
             bot.getApi().sendMessage(message->chat->id, "Текст успешно отформатирован");
         } else if (message->text == "+ упражнение" && !waitForExerciseName){
@@ -165,13 +163,13 @@ void WorkoutBot::setupMessages()
             waitForSet = false;
         } else if (waitForExerciseName){
             /// Если это первое упражнение
-            if (currentTrainData.isEmpty()) {
-                Parser::init(currentTrainData, QString::fromStdString(message->text));
+            if (!usersTrainData.contains(message->chat->id)) {
+                Parser::init(usersTrainData[message->chat->id], QString::fromStdString(message->text));
             } else {
-                currentTrainData += QString::fromStdString(message->text) + "\n";
+                usersTrainData[message->chat->id] += QString::fromStdString(message->text) + "\n";
             }
 
-            bot.getApi().sendMessage(message->chat->id, currentTrainData.toStdString());
+            bot.getApi().sendMessage(message->chat->id, usersTrainData.value(message->chat->id).toStdString());
             bot.getApi().sendMessage(message->chat->id, "После ввода названи упражнения не забудьте нажать +подход");
             waitForExerciseName = false;
         } else if (message->text == "+ подход" && !waitForSet){
@@ -181,15 +179,14 @@ void WorkoutBot::setupMessages()
         } else if (message->text == "+ подход" && waitForSet){
             bot.getApi().sendMessage(message->chat->id, "Итак жду подхода");
         } else if (waitForSet && message->text != "меню") {
-            /// Вызвать static метод парсера
             QString setInfo = Parser::calcSetTonnage(QString::fromStdString(message->text));
             if (setInfo == "Ошибка! Неверный формат строки"){
                 bot.getApi().sendMessage(message->chat->id, "Ошибка! Неверный формат строки");
             } else if (setInfo == "Ошибка! Не удалось выполнить преобразование, проверьте введенный формат") {
                 bot.getApi().sendMessage(message->chat->id, "Ошибка! Не удалось выполнить преобразование, проверьте введенный формат");
             } else {
-                currentTrainData += setInfo + "\n";
-                bot.getApi().sendMessage(message->chat->id, currentTrainData.toStdString());
+                usersTrainData[message->chat->id] += setInfo + "\n";
+                bot.getApi().sendMessage(message->chat->id, usersTrainData.value(message->chat->id).toStdString());
             }
         } else if (message->text == "меню"){
             bot.getApi().sendMessage(message->chat->id, "Выберите действие:", nullptr, 0, _inlineKeyboard);

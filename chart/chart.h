@@ -9,7 +9,7 @@ class Chart : public QMainWindow
     Q_OBJECT
 
 public:
-    /* передаем tg_id чата с пользователем, поскольку png изображения будет храниться под этим tg_id */
+    /* передаем tg_id чата с пользователем, поскольку png изображения будут храниться под этим tg_id */
     Chart(std::int64_t id, QWidget *parent = nullptr);
     ~Chart();
 

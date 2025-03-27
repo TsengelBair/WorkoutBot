@@ -2,7 +2,7 @@
 #define WORKOUTBOT_H
 
 #include <tgbot/tgbot.h>
-#include <string>
+#include <QHash>
 #include <QString>
 
 class WorkoutBot
@@ -37,6 +37,8 @@ private:
 private:
     TgBot::Bot bot;
     QString currentTrainData;
+
+    QHash<std::int64_t, QString>usersTrainData;
 
     bool waitForExerciseName;
     bool waitForSet;
