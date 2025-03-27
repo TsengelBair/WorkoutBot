@@ -26,7 +26,7 @@ void Chart::createPlot()
     _plot->setAxisScaleDraw(QwtPlot::xBottom, new QwtDateScaleDraw);
     _plot->setAxisScaleEngine(QwtPlot::xBottom, new QwtDateScaleEngine);
 
-    /// Создание кривой
+    // Создание кривой
     QwtPlotCurve *curve = new QwtPlotCurve();
     curve->setPen(Qt::blue, 2);
     curve->setRenderHint(QwtPlotItem::RenderAntialiased, true);
@@ -38,7 +38,7 @@ void Chart::createPlot()
 
     /// Использование QVector для хранения точек
     QVector<QPointF> points;
-    for (auto it = data.constBegin(); it != data.constEnd(); ++it){
+    for (auto it = data.constBegin(); it != data.constEnd(); ++it) {
         QString dateString = it.key();
         double tonnage = it.value();
 
@@ -47,10 +47,9 @@ void Chart::createPlot()
         /// Проверка на валидность даты
         if (dateTime.isValid()) {
             QPointF point = QPointF(QwtDate::toDouble(dateTime), tonnage);
-            points.append(point); /// append вместо оператора <<
+            points.append(point);
         } else {
             qDebug() << "Invalid date:" << dateString;
-            /// какой нибудь способ валидации
         }
     }
 
@@ -60,13 +59,16 @@ void Chart::createPlot()
 
     _plot->replot();
 
-    /// Сохранение графика как PNG
+    QDir dir("charts");
+    if (!dir.exists()) {
+        dir.mkpath(".");
+    }
+
     QPixmap pixmap = _plot->grab();
-    QString path = QString::number(_id) + ".png";
+    QString path = "charts/" + QString::number(_id) + ".png";
     if (pixmap.save(path)) {
         qDebug() << "OK";
     } else {
         qDebug() << "Error";
     }
 }
-

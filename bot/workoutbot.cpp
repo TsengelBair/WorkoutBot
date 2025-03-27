@@ -102,7 +102,7 @@ void WorkoutBot::setupCallbacks()
             QScopedPointer<Chart>_chart(new Chart(query->message->chat->id));
             _chart->createPlot();
             /// Для каждого пользователя будет храниться по одной картинке в директории charts, название файла -> id чата
-            QString path = QString::number(query->message->chat->id) + ".png";
+            QString path = "charts/" + QString::number(query->message->chat->id) + ".png";
             bot.getApi().sendPhoto(query->message->chat->id, TgBot::InputFile::fromFile(path.toStdString(), "image/png"));
         } else if (query->data == "finish_train"){
             if (!usersTrainData.contains(query->message->chat->id) || usersTrainData.value(query->message->chat->id).isEmpty()) {
