@@ -6,10 +6,7 @@
 #include "db/dbhandler.h"
 #include "chart/chart.h"
 
-WorkoutBot::WorkoutBot(const std::string &token) : bot(token),
-    waitForExerciseName(false),
-    waitForSet(false),
-    editModeOn(false)
+WorkoutBot::WorkoutBot(const std::string &token) : bot(token)
 {
     /// кнопки для _inlineKeyboard
     btnStart = std::make_shared<TgBot::InlineKeyboardButton>();
@@ -90,51 +87,56 @@ void WorkoutBot::setupCommands()
 void WorkoutBot::setupCallbacks()
 {
     bot.getEvents().onCallbackQuery([&](TgBot::CallbackQuery::Ptr query) {
+
+        std::int64_t chatId = query->message->chat->id;
+        if (!userStates.contains(chatId)) {
+            userStates[chatId] = UserState{false, false, false, ""};
+        }
+
+        UserState& state = userStates[chatId];
+
         if (query->data == "start_training") {
-            bot.getApi().sendMessage(query->message->chat->id, "Добавьте упражнение", nullptr, 0, _keyboard);
+            bot.getApi().sendMessage(chatId, "Добавьте упражнение", nullptr, 0, _keyboard);
         } else if (query->data == "get_chart"){
-            QMap<QString, double> data = DbHandler::getInstance()->trainData(query->message->chat->id);
+            QMap<QString, double> data = DbHandler::getInstance()->trainData(chatId);
             if (data.size() == 0) {
-                bot.getApi().sendMessage(query->message->chat->id, "Ошибка, нет данных для построения графика");
+                bot.getApi().sendMessage(chatId, "Ошибка, нет данных для построения графика");
                 return;
             }
 
-            QScopedPointer<Chart>_chart(new Chart(query->message->chat->id));
+            QScopedPointer<Chart>_chart(new Chart(chatId));
             _chart->createPlot();
             /// Для каждого пользователя будет храниться по одной картинке в директории charts, название файла -> id чата
-            QString path = "charts/" + QString::number(query->message->chat->id) + ".png";
-            bot.getApi().sendPhoto(query->message->chat->id, TgBot::InputFile::fromFile(path.toStdString(), "image/png"));
+            QString path = "charts/" + QString::number(chatId) + ".png";
+            bot.getApi().sendPhoto(chatId, TgBot::InputFile::fromFile(path.toStdString(), "image/png"));
         } else if (query->data == "finish_train"){
-            if (!usersTrainData.contains(query->message->chat->id) || usersTrainData.value(query->message->chat->id).isEmpty()) {
-                bot.getApi().sendMessage(query->message->chat->id, "Ошибка, тренировка не может быть пустой");
+            if (state.usersTrainDataStr.isEmpty()) {
+                bot.getApi().sendMessage(chatId, "Ошибка, тренировка не может быть пустой");
                 return;
             }
             /// пара<словарь<ключ: упражнение, значение: подходы>, дата_тренировки>
-            QPair<QMap<QString, QList<double>>, QString> trainInfoAndDate = Parser::parseWorkoutMessage(usersTrainData.value(query->message->chat->id));
+            QPair<QMap<QString, QList<double>>, QString> trainInfoAndDate = Parser::parseWorkoutMessage(state.usersTrainDataStr);
             QString error;
-            bool ok = DbHandler::getInstance()->saveTrain(query->message->chat->id, trainInfoAndDate.second,
+            bool ok = DbHandler::getInstance()->saveTrain(chatId, trainInfoAndDate.second,
                                                           trainInfoAndDate.first, error);
             if (ok) {
                 /// После успешного сохранения, сбрасываем маркеры, позволяющие отслеживать состояние бота
-                waitForExerciseName = false;
-                waitForSet = false;
-                editModeOn = false;
-                usersTrainData.remove(query->message->chat->id);
-                bot.getApi().sendMessage(query->message->chat->id, "Тренировка успешно сохранена");
+                state = UserState{false, false, false, ""};
+                bot.getApi().sendMessage(chatId, "Тренировка успешно сохранена");
             } else {
                 if (error.contains("UNIQUE constraint failed")) {
-                    bot.getApi().sendMessage(query->message->chat->id, "Ошиба, за день может быть добавлена только одна тренировка");
+                    bot.getApi().sendMessage(chatId, "Ошибка, за день может быть добавлена только одна тренировка");
                 } else {
-                    bot.getApi().sendMessage(query->message->chat->id, "Ошибка, попробуйте еще раз");
+                    bot.getApi().sendMessage(chatId, "Ошибка, попробуйте еще раз");
                 }
             }
 
         } else if (query->data == "get_text_report") {
             QString dataStr;
 
-            QMap<QString, double> data = DbHandler::getInstance()->trainData(query->message->chat->id);
+            QMap<QString, double> data = DbHandler::getInstance()->trainData(chatId);
             if (data.size() == 0) {
-                bot.getApi().sendMessage(query->message->chat->id, "Ошибка, нет данных");
+                bot.getApi().sendMessage(chatId, "Ошибка, нет данных");
                 return;
             }
 
@@ -142,7 +144,7 @@ void WorkoutBot::setupCallbacks()
                 dataStr += it.key() + ": " + QString::number(it.value()) + "кг" +  "\n";
             }
 
-            bot.getApi().sendMessage(query->message->chat->id, dataStr.toStdString());
+            bot.getApi().sendMessage(chatId, dataStr.toStdString());
         }
 
         bot.getApi().answerCallbackQuery(query->id);
@@ -153,54 +155,65 @@ void WorkoutBot::setupCallbacks()
 void WorkoutBot::setupMessages()
 {
     bot.getEvents().onAnyMessage([&](TgBot::Message::Ptr message){
+
+        std::int64_t chatId = message->chat->id;
+        if (!userStates.contains(chatId)) {
+            userStates[chatId] = UserState{false, false, false, ""};
+        }
+
+        UserState& state = userStates[chatId];
+
         if (message->text == "Завершить тренировку"){
-            bot.getApi().sendMessage(message->chat->id, "Завершить тренировку?");
-            bot.getApi().sendMessage(message->chat->id, "Выберите действие:", nullptr, 0, answerKeyboard);
+            bot.getApi().sendMessage(chatId, "Завершить тренировку?");
+            bot.getApi().sendMessage(chatId, "Выберите действие:", nullptr, 0, answerKeyboard);
         } else if (message->text == "Отредактировать вручную"){
-            bot.getApi().sendMessage(message->chat->id, "Скопируйте текст, отредактируйте и отправьте сообщением");
-            editModeOn = true;
-        } else if (editModeOn){
-            usersTrainData[message->chat->id] = QString::fromStdString(message->text + "\n");
-            editModeOn = false;
-            bot.getApi().sendMessage(message->chat->id, "Текст успешно отформатирован");
-        } else if (message->text == "+ упражнение" && !waitForExerciseName){
-            bot.getApi().sendMessage(message->chat->id, "Введите название упражнения");
-            waitForExerciseName = true;
-            waitForSet = false;
-        } else if (waitForExerciseName){
+            bot.getApi().sendMessage(chatId, "Скопируйте текст, отредактируйте и отправьте сообщением");
+            state.editModeOn = true;
+        } else if (state.editModeOn){
+            state.usersTrainDataStr = QString::fromStdString(message->text + "\n");
+            state.editModeOn = false;
+            bot.getApi().sendMessage(chatId, "Текст успешно отформатирован");
+        } else if (message->text == "+ упражнение" && !state.waitForExerciseName){
+            bot.getApi().sendMessage(chatId, "Введите название упражнения");
+            state.waitForExerciseName = true;
+            state.waitForSet = false;
+        } else if (state.waitForExerciseName){
             if (message->text == "+ подход") {
-                bot.getApi().sendMessage(message->chat->id, "Вы не ввели название упражнения");
+                bot.getApi().sendMessage(chatId, "Вы не ввели название упражнения");
+                return;
+            } else if (message->text == "+ упражнение") {
+                bot.getApi().sendMessage(chatId, "Жду название упражнения");
                 return;
             }
 
             /// Если это первое упражнение
-            if (!usersTrainData.contains(message->chat->id)) {
-                Parser::init(usersTrainData[message->chat->id], QString::fromStdString(message->text));
+            if (state.usersTrainDataStr.isEmpty()) {
+                Parser::init(state.usersTrainDataStr, QString::fromStdString(message->text));
             } else {
                 /// приводим первую букву упражнения к верхнему регистру
                 QString origStr = QString::fromStdString(message->text);
                 origStr[0] = origStr[0].toUpper();
-                usersTrainData[message->chat->id] += origStr + "\n";
+                state.usersTrainDataStr += origStr + "\n";
             }
 
-            bot.getApi().sendMessage(message->chat->id, usersTrainData.value(message->chat->id).toStdString());
-            bot.getApi().sendMessage(message->chat->id, "После ввода названия упражнения не забудьте нажать +подход");
-            waitForExerciseName = false;
-        } else if (message->text == "+ подход" && !waitForSet){
-            bot.getApi().sendMessage(message->chat->id, "Введите подход в формате вес * количество повторений."
+            bot.getApi().sendMessage(chatId, state.usersTrainDataStr.toStdString());
+            bot.getApi().sendMessage(chatId, "После ввода названия упражнения не забудьте нажать +подход");
+            state.waitForExerciseName = false;
+        } else if (message->text == "+ подход" && !state.waitForSet){
+            bot.getApi().sendMessage(chatId, "Введите подход в формате вес * количество повторений."
                                                         " К примеру 75*10 и отправьте как сообщение");
-            waitForSet = true;
-        } else if (message->text == "+ подход" && waitForSet){
-            bot.getApi().sendMessage(message->chat->id, "Итак жду подхода");
-        } else if (waitForSet && message->text != "меню") {
+            state.waitForSet = true;
+        } else if (message->text == "+ подход" && state.waitForSet){
+            bot.getApi().sendMessage(chatId, "Итак жду подхода");
+        } else if (state.waitForSet && message->text != "меню") {
             QString setInfo = Parser::calcSetTonnage(QString::fromStdString(message->text));
             if (setInfo == "Ошибка! Неверный формат строки"){
-                bot.getApi().sendMessage(message->chat->id, "Ошибка! Неверный формат строки");
+                bot.getApi().sendMessage(chatId, "Ошибка! Неверный формат строки");
             } else if (setInfo == "Ошибка! Не удалось выполнить преобразование, проверьте введенный формат") {
-                bot.getApi().sendMessage(message->chat->id, "Ошибка! Не удалось выполнить преобразование, проверьте введенный формат");
+                bot.getApi().sendMessage(chatId, "Ошибка! Не удалось выполнить преобразование, проверьте введенный формат");
             } else {
-                usersTrainData[message->chat->id] += setInfo + "\n";
-                bot.getApi().sendMessage(message->chat->id, usersTrainData.value(message->chat->id).toStdString());
+                state.usersTrainDataStr += setInfo + "\n";
+                bot.getApi().sendMessage(chatId, state.usersTrainDataStr.toStdString());
             }
         } else if (message->text == "меню"){
             bot.getApi().sendMessage(message->chat->id, "Выберите действие:", nullptr, 0, _inlineKeyboard);

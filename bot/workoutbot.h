@@ -5,6 +5,14 @@
 #include <QHash>
 #include <QString>
 
+/// для отслеживания состояния бота (создается под каждого пользователя)
+struct UserState {
+    bool waitForExerciseName;
+    bool waitForSet;
+    bool editModeOn;
+    QString usersTrainDataStr;
+};
+
 class WorkoutBot
 {
 public:
@@ -16,7 +24,6 @@ private:
     void setupCallbacks();
     void setupMessages();
 
-/// переиспользуемые виджеты
 private:
     std::shared_ptr<TgBot::InlineKeyboardButton> btnStart;
     std::shared_ptr<TgBot::InlineKeyboardButton> getChartBtn;
@@ -36,11 +43,7 @@ private:
 
 private:
     TgBot::Bot bot;
-    QHash<std::int64_t, QString>usersTrainData;
-
-    bool waitForExerciseName;
-    bool waitForSet;
-    bool editModeOn;
+    QHash<std::int64_t, UserState>userStates;
 };
 
 #endif // WORKOUTBOT_H
