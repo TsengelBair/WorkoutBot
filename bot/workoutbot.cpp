@@ -145,6 +145,8 @@ void WorkoutBot::setupCallbacks()
             }
 
             bot.getApi().sendMessage(chatId, dataStr.toStdString());
+        } else if (query->data == "cancel_action") {
+            bot.getApi().sendMessage(chatId, "Завершение отменено");
         }
 
         bot.getApi().answerCallbackQuery(query->id);
@@ -200,9 +202,14 @@ void WorkoutBot::setupMessages()
             bot.getApi().sendMessage(chatId, "После ввода названия упражнения не забудьте нажать +подход");
             state.waitForExerciseName = false;
         } else if (message->text == "+ подход" && !state.waitForSet){
-            bot.getApi().sendMessage(chatId, "Введите подход в формате вес * количество повторений."
-                                                        " К примеру 75*10 и отправьте как сообщение");
-            state.waitForSet = true;
+            if (state.usersTrainDataStr.isEmpty()) {
+                bot.getApi().sendMessage(chatId, "Ввод подхода без предварительного добавления упражнения недопустим");
+                return;
+            } else {
+                bot.getApi().sendMessage(chatId, "Введите подход в формате вес * количество повторений."
+                                                            " К примеру 75*10 и отправьте как сообщение");
+                state.waitForSet = true;
+            }
         } else if (message->text == "+ подход" && state.waitForSet){
             bot.getApi().sendMessage(chatId, "Итак жду подхода");
         } else if (state.waitForSet && message->text != "меню") {
@@ -217,6 +224,12 @@ void WorkoutBot::setupMessages()
             }
         } else if (message->text == "меню"){
             bot.getApi().sendMessage(message->chat->id, "Выберите действие:", nullptr, 0, _inlineKeyboard);
+        } else if (!state.waitForExerciseName && !state.waitForSet) {
+            QString setInfo = Parser::calcSetTonnage(QString::fromStdString(message->text));
+            if (setInfo != "Ошибка! Неверный формат строки" &&
+                setInfo != "Ошибка! Не удалось выполнить преобразование, проверьте введенный формат") {
+                bot.getApi().sendMessage(chatId, "Вы забыли нажать + подход");
+            }
         }
     });
 }
