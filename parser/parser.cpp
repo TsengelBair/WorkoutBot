@@ -6,20 +6,30 @@ Parser::Parser()
 {
 }
 
+QString Parser::makeCorrectStrCase(QString &str)
+{
+    if (str.isEmpty()) return "";
+    QString res = str;
+
+    res[0] = res[0].toUpper();
+    for (int i = 1; i < str.size(); ++i){
+        res[i] = res[i].toLower();
+    }
+
+    return res;
+}
+
 void Parser::init(QString &currentTrainData, QString firstExercise)
 {
     QDateTime currentDateAndTime = QDateTime::currentDateTime();
 
     QString dateHeader = "Дата тренировки: " +  currentDateAndTime.date().toString("dd-MM-yyyy");
     QString timeHeader = "Начало тренировки: " + currentDateAndTime.time().toString("HH:mm");
-
-    /// приводим название упражнения к верхнему регистру
-    QString _firstExercise = firstExercise;
-    _firstExercise[0] = _firstExercise[0].toUpper();
+    QString res = makeCorrectStrCase(firstExercise);
 
     currentTrainData +=  dateHeader + "\n";
     currentTrainData +=  timeHeader + "\n";
-    currentTrainData +=  _firstExercise + "\n";
+    currentTrainData +=  res + "\n";
 }
 
 QString Parser::calcSetTonnage(const QString &input)
@@ -75,11 +85,12 @@ QPair<QMap<QString, QList<double>>, QString> Parser::parseWorkoutMessage(const Q
                 exercisesTonnage[currentExercise].append(tonnage);
             }
         } else {
-            /// Это название нового упражнения, убираем лишние пробелы и приводим первую букву к верхнему регистру
+            /// Это название нового упражнения, убираем лишние пробелы и приводим первую букву к верхнему регистру, остальные к нижнему
             currentExercise = line.trimmed();
-            currentExercise[0] = currentExercise[0].toUpper();
-            if (!exercisesTonnage.contains(currentExercise)) {
-                exercisesTonnage[currentExercise] = QList<double>();
+            QString _currentExercise = makeCorrectStrCase(currentExercise);
+
+            if (!exercisesTonnage.contains(_currentExercise)) {
+                exercisesTonnage[_currentExercise] = QList<double>();
             }
         }
     }
