@@ -166,7 +166,10 @@ void WorkoutBot::setupMessages()
             if (!usersTrainData.contains(message->chat->id)) {
                 Parser::init(usersTrainData[message->chat->id], QString::fromStdString(message->text));
             } else {
-                usersTrainData[message->chat->id] += QString::fromStdString(message->text) + "\n";
+                /// приводим первую букву упражнения к верхнему регистру
+                QString origStr = QString::fromStdString(message->text);
+                origStr[0] = origStr[0].toUpper();
+                usersTrainData[message->chat->id] += origStr + "\n";
             }
 
             bot.getApi().sendMessage(message->chat->id, usersTrainData.value(message->chat->id).toStdString());

@@ -13,9 +13,13 @@ void Parser::init(QString &currentTrainData, QString firstExercise)
     QString dateHeader = "Дата тренировки: " +  currentDateAndTime.date().toString("dd-MM-yyyy");
     QString timeHeader = "Начало тренировки: " + currentDateAndTime.time().toString("HH:mm");
 
+    /// приводим название упражнения к верхнему регистру
+    QString _firstExercise = firstExercise;
+    _firstExercise[0] = _firstExercise[0].toUpper();
+
     currentTrainData +=  dateHeader + "\n";
     currentTrainData +=  timeHeader + "\n";
-    currentTrainData +=  firstExercise + "\n";
+    currentTrainData +=  _firstExercise + "\n";
 }
 
 QString Parser::calcSetTonnage(const QString &input)
@@ -45,23 +49,23 @@ QString Parser::calcSetTonnage(const QString &input)
 
 QPair<QMap<QString, QList<double>>, QString> Parser::parseWorkoutMessage(const QString &message)
 {
-    QMap<QString, QList<double>> exercisesTonnage; // Хранит тоннаж для каждого упражнения
+    QMap<QString, QList<double>> exercisesTonnage; /// Хранит тоннаж для каждого упражнения
     QString date;
 
-    // Разделяем сообщение на строки
+    /// Разделяем сообщение на строки
     QStringList lines = message.split("\n", QString::SkipEmptyParts);
 
-    // Извлекаем дату из первой строки
+    /// Извлекаем дату из первой строки
     if (!lines.isEmpty() && lines[0].startsWith("Дата тренировки:")) {
-        date = lines[0].section(':', 1).trimmed(); // Извлекаем дату
+        date = lines[0].section(':', 1).trimmed();
     }
 
-    // Начинаем с третьей строки (индекс 2), чтобы пропустить дату и время
+    /// Начинаем с третьей строки (индекс 2), чтобы пропустить дату и время
     QString currentExercise;
     for (int i = 2; i < lines.size(); ++i) {
         const QString &line = lines[i];
 
-        // Если строка содержит только цифры, дробные числа и символы, это подход
+        /// Если строка содержит только цифры, дробные числа и символы, это подход
         if (line.contains(QRegExp("^\\d+(\\.\\d+)?\\s*\\*\\s*\\d+(\\.\\d+)?\\s*=\\s*\\d+(\\.\\d+)?$"))) {
             if (!currentExercise.isEmpty()) {
                 // Извлекаем тоннаж из строки
@@ -71,13 +75,16 @@ QPair<QMap<QString, QList<double>>, QString> Parser::parseWorkoutMessage(const Q
                 exercisesTonnage[currentExercise].append(tonnage);
             }
         } else {
-            // Это название нового упражнения
+            /// Это название нового упражнения, убираем лишние пробелы и приводим первую букву к верхнему регистру
             currentExercise = line.trimmed();
+            currentExercise[0] = currentExercise[0].toUpper();
             if (!exercisesTonnage.contains(currentExercise)) {
                 exercisesTonnage[currentExercise] = QList<double>();
             }
         }
     }
+
+
 
     return qMakePair(exercisesTonnage, date);
 }
