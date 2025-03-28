@@ -110,7 +110,7 @@ int DbHandler::getOrInsertExerciseId(const std::int64_t tg_id, const QString &ex
     return query.lastInsertId().toInt();
 }
 
-bool DbHandler::saveTrain(const std::int64_t tg_id, const QString &date, const QMap<QString, QList<double>> &trainInfo)
+bool DbHandler::saveTrain(const std::int64_t tg_id, const QString &date, const QMap<QString, QList<double>> &trainInfo, QString& error)
 {
     QSqlQuery query;
     query.prepare("INSERT INTO workouts (tg_id, workout_date) VALUES (:tg_id, :date)");
@@ -118,7 +118,8 @@ bool DbHandler::saveTrain(const std::int64_t tg_id, const QString &date, const Q
     query.bindValue(":date", QDate::fromString(date, "dd-MM-yyyy"));
 
     if (!query.exec()){
-        qDebug() << "Ошибка при insert в основную таблицу" << query.lastError();
+        error = query.lastError().text();
+        qDebug() << "Ошибка при insert в основную таблицу:" << error;
         return false;
     }
 

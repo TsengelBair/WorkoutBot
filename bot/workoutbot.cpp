@@ -111,7 +111,9 @@ void WorkoutBot::setupCallbacks()
             }
             /// пара<словарь<ключ: упражнение, значение: подходы>, дата_тренировки>
             QPair<QMap<QString, QList<double>>, QString> trainInfoAndDate = Parser::parseWorkoutMessage(usersTrainData.value(query->message->chat->id));
-            bool ok = DbHandler::getInstance()->saveTrain(query->message->chat->id, trainInfoAndDate.second, trainInfoAndDate.first);
+            QString error;
+            bool ok = DbHandler::getInstance()->saveTrain(query->message->chat->id, trainInfoAndDate.second,
+                                                          trainInfoAndDate.first, error);
             if (ok) {
                 /// После успешного сохранения, сбрасываем маркеры, позволяющие отслеживать состояние бота
                 waitForExerciseName = false;
@@ -120,7 +122,11 @@ void WorkoutBot::setupCallbacks()
                 usersTrainData.remove(query->message->chat->id);
                 bot.getApi().sendMessage(query->message->chat->id, "Тренировка успешно сохранена");
             } else {
-                bot.getApi().sendMessage(query->message->chat->id, "Ошибка, попробуйте еще раз");
+                if (error.contains("UNIQUE constraint failed")) {
+                    bot.getApi().sendMessage(query->message->chat->id, "Ошиба, за день может быть добавлена только одна тренировка");
+                } else {
+                    bot.getApi().sendMessage(query->message->chat->id, "Ошибка, попробуйте еще раз");
+                }
             }
 
         } else if (query->data == "get_text_report") {

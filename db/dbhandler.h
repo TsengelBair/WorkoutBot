@@ -21,7 +21,7 @@ public:
     static DbHandler* getInstance();
     QSqlDatabase& getDb();
 
-    bool saveTrain(const std::int64_t tg_id, const QString& date, const QMap<QString, QList<double>> &trainInfo);
+    bool saveTrain(const std::int64_t tg_id, const QString& date, const QMap<QString, QList<double>> &trainInfo, QString& error);
     QMap<QString, double> trainData(const std::int64_t tg_id);
 };
 
