@@ -168,6 +168,11 @@ void WorkoutBot::setupMessages()
             waitForExerciseName = true;
             waitForSet = false;
         } else if (waitForExerciseName){
+            if (message->text == "+ подход") {
+                bot.getApi().sendMessage(message->chat->id, "Вы не ввели название упражнения");
+                return;
+            }
+
             /// Если это первое упражнение
             if (!usersTrainData.contains(message->chat->id)) {
                 Parser::init(usersTrainData[message->chat->id], QString::fromStdString(message->text));
@@ -179,7 +184,7 @@ void WorkoutBot::setupMessages()
             }
 
             bot.getApi().sendMessage(message->chat->id, usersTrainData.value(message->chat->id).toStdString());
-            bot.getApi().sendMessage(message->chat->id, "После ввода названи упражнения не забудьте нажать +подход");
+            bot.getApi().sendMessage(message->chat->id, "После ввода названия упражнения не забудьте нажать +подход");
             waitForExerciseName = false;
         } else if (message->text == "+ подход" && !waitForSet){
             bot.getApi().sendMessage(message->chat->id, "Введите подход в формате вес * количество повторений."

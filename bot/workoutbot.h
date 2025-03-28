@@ -36,8 +36,6 @@ private:
 
 private:
     TgBot::Bot bot;
-    QString currentTrainData;
-
     QHash<std::int64_t, QString>usersTrainData;
 
     bool waitForExerciseName;
