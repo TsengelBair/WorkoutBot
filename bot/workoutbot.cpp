@@ -21,8 +21,12 @@ WorkoutBot::WorkoutBot(const std::string &token) : bot(token)
     getTextReportBtn->text = "Отчет";
     getTextReportBtn->callbackData = "get_text_report";
 
+    exercisesBtn = std::make_shared<TgBot::InlineKeyboardButton>();
+    exercisesBtn->text = "Упражнения";
+    exercisesBtn->callbackData = "get_all_exercises";
+
     _inlineKeyboard = std::make_shared<TgBot::InlineKeyboardMarkup>();
-    _inlineKeyboard->inlineKeyboard.push_back({btnStart, getChartBtn, getTextReportBtn});
+    _inlineKeyboard->inlineKeyboard.push_back({btnStart, getChartBtn, getTextReportBtn, exercisesBtn});
 
     ///кнопки для _keyboard
     addExerciseBtn = std::make_shared<TgBot::KeyboardButton>();
@@ -145,6 +149,24 @@ void WorkoutBot::setupCallbacks()
             }
 
             bot.getApi().sendMessage(chatId, dataStr.toStdString());
+        } else if (query->data == "get_all_exercises") {
+            QString error;
+            QList<QString> exercises = DbHandler::getInstance()->getAllExercises(chatId, error);
+            if (error.isEmpty()) {
+                TgBot::InlineKeyboardMarkup::Ptr allExercisesKeyboard = std::make_shared<TgBot::InlineKeyboardMarkup>();
+                for (auto it = exercises.cbegin(); it != exercises.cend(); ++it) {
+                    QString exerciseName = *it;
+                    std::shared_ptr<TgBot::InlineKeyboardButton> btn = std::make_shared<TgBot::InlineKeyboardButton>();
+                    btn->text = exerciseName.toStdString();
+                    btn->callbackData = exerciseName.toStdString();
+                    allExercisesKeyboard->inlineKeyboard.push_back({btn});
+                }
+                bot.getApi().sendMessage(chatId, "Упражнения:", nullptr, 0, allExercisesKeyboard);
+            } else if (error == "Error") {
+                bot.getApi().sendMessage(chatId, "Ошибка при выполнении запроса, попробуйте позже");
+            } else if (error == "No data") {
+                bot.getApi().sendMessage(chatId, "Нет данных");
+            }
         } else if (query->data == "cancel_action") {
             bot.getApi().sendMessage(chatId, "Завершение отменено");
         }
@@ -153,6 +175,7 @@ void WorkoutBot::setupCallbacks()
     });
 
 }
+
 
 void WorkoutBot::setupMessages()
 {

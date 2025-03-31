@@ -197,6 +197,34 @@ QMap<QString, double> DbHandler::trainData(const std::int64_t tg_id)
     return data;
 }
 
+QList<QString> DbHandler::getAllExercises(const int64_t tg_id, QString& errorStr)
+{
+    QList<QString> exercises;
+
+    QSqlQuery query;
+    QString queryStr = "SELECT * FROM exercises WHERE tg_id = :tg_id";
+
+    query.prepare(queryStr);
+    query.bindValue(":tg_id", QVariant::fromValue(tg_id));
+
+    if (!query.exec()) {
+        qDebug() << "Ошибка выполнения запроса:" << query.lastError().text();
+        errorStr = "Error";
+        return exercises;
+    }
+
+    while (query.next()) {
+        QString exercise = query.value(2).toString();
+        exercises.push_back(exercise);
+    }
+
+    if (exercises.isEmpty()) {
+        errorStr = "No data";
+    }
+
+    return exercises;
+}
+
 QSqlDatabase &DbHandler::getDb()
 {
     if (!instance){

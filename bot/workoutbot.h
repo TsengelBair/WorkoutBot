@@ -28,6 +28,7 @@ private:
     std::shared_ptr<TgBot::InlineKeyboardButton> btnStart;
     std::shared_ptr<TgBot::InlineKeyboardButton> getChartBtn;
     std::shared_ptr<TgBot::InlineKeyboardButton> getTextReportBtn;
+    std::shared_ptr<TgBot::InlineKeyboardButton> exercisesBtn;
     TgBot::InlineKeyboardMarkup::Ptr _inlineKeyboard;
 
     std::shared_ptr<TgBot::KeyboardButton> addExerciseBtn;

@@ -23,6 +23,7 @@ public:
 
     bool saveTrain(const std::int64_t tg_id, const QString& date, const QMap<QString, QList<double>> &trainInfo, QString& error);
     QMap<QString, double> trainData(const std::int64_t tg_id);
+    QList<QString> getAllExercises(const std::int64_t tg_id, QString& errorStr);
 };
 
 #endif // DBHANDLER_H
