@@ -10,6 +10,7 @@ struct UserState {
     bool waitForExerciseName;
     bool waitForSet;
     bool editModeOn;
+    bool searchExerciseModeOn;
     QString usersTrainDataStr;
 };
 
@@ -45,6 +46,7 @@ private:
 private:
     TgBot::Bot bot;
     QHash<std::int64_t, UserState>userStates;
+    QList<QString>_exerciseNames;
 };
 
 #endif // WORKOUTBOT_H

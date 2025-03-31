@@ -94,7 +94,7 @@ void WorkoutBot::setupCallbacks()
 
         std::int64_t chatId = query->message->chat->id;
         if (!userStates.contains(chatId)) {
-            userStates[chatId] = UserState{false, false, false, ""};
+            userStates[chatId] = UserState{false, false, false, false, ""};
         }
 
         UserState& state = userStates[chatId];
@@ -125,7 +125,7 @@ void WorkoutBot::setupCallbacks()
                                                           trainInfoAndDate.first, error);
             if (ok) {
                 /// После успешного сохранения, сбрасываем маркеры, позволяющие отслеживать состояние бота
-                state = UserState{false, false, false, ""};
+                state = UserState{false, false, false, false, ""};
                 bot.getApi().sendMessage(chatId, "Тренировка успешно сохранена");
             } else {
                 if (error.contains("UNIQUE constraint failed")) {
@@ -156,6 +156,8 @@ void WorkoutBot::setupCallbacks()
                 TgBot::InlineKeyboardMarkup::Ptr allExercisesKeyboard = std::make_shared<TgBot::InlineKeyboardMarkup>();
                 for (auto it = exercises.cbegin(); it != exercises.cend(); ++it) {
                     QString exerciseName = *it;
+                    _exerciseNames.push_back(exerciseName);
+
                     std::shared_ptr<TgBot::InlineKeyboardButton> btn = std::make_shared<TgBot::InlineKeyboardButton>();
                     btn->text = exerciseName.toStdString();
                     btn->callbackData = exerciseName.toStdString();
@@ -183,7 +185,7 @@ void WorkoutBot::setupMessages()
 
         std::int64_t chatId = message->chat->id;
         if (!userStates.contains(chatId)) {
-            userStates[chatId] = UserState{false, false, false, ""};
+            userStates[chatId] = UserState{false, false, false, false, ""};
         }
 
         UserState& state = userStates[chatId];
@@ -202,7 +204,7 @@ void WorkoutBot::setupMessages()
             bot.getApi().sendMessage(chatId, "Введите название упражнения");
             state.waitForExerciseName = true;
             state.waitForSet = false;
-        } else if (state.waitForExerciseName){
+        } else if (state.waitForExerciseName && !state.searchExerciseModeOn){
             if (message->text == "+ подход") {
                 bot.getApi().sendMessage(chatId, "Вы не ввели название упражнения");
                 return;
