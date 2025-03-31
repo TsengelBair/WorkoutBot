@@ -77,6 +77,41 @@ bool DbHandler::createTables()
     return 1;
 }
 
+QList<QPair<QString, double>> DbHandler::trainDataForExercise(const int64_t tg_id, QString &exerciseName, QString& error)
+{
+    QList<QPair<QString, double>> data;
+
+    int exerciseID = getExerciseId(tg_id, exerciseName);
+    if (exerciseID == -1) {
+        error = "Not exist";
+        return data;
+    }
+
+    QSqlQuery query;
+    query.prepare("SELECT w.workout_date, SUM(s.tonnage) AS total_tonnage "
+                  "FROM sets s JOIN workouts w ON s.workout_id = w.id "
+                  "WHERE s.exercise_id = :exerciseID "
+                  "GROUP BY w.workout_date ORDER BY w.workout_date");
+
+    query.bindValue(":exerciseID", exerciseID);
+
+    if (!query.exec()) {
+        error = "Error";
+        return data;
+    }
+
+    while (query.next()) {
+        QString workoutDate = query.value(0).toString();
+        double totalTonnage = query.value(1).toDouble();
+        qDebug() << totalTonnage;
+
+        data.push_back(qMakePair(workoutDate, totalTonnage));
+    }
+
+    return data;
+}
+
+
 int DbHandler::getExerciseId(const int64_t tg_id, const QString &exerciseName)
 {
     QSqlQuery query;

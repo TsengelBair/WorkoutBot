@@ -117,6 +117,23 @@ void WorkoutBot::setupCallbacks()
             bool exerciseExist = findExercise(query->data);
             if (exerciseExist) {
                 /// вызов db метода с передачей query->data (это название упражнения)
+                QString error;
+                QString exerciseName = QString::fromStdString(query->data);
+
+                QList<QPair<QString, double>> data = DbHandler::getInstance()->trainDataForExercise(chatId, exerciseName, error);
+                if (error.isEmpty()) {
+                    QString dataStr;
+                    for (auto it = data.cbegin(); it != data.cend(); ++it) {
+                        dataStr += it->first + ": " + QString::number(it->second) + "\n"; // Используйте QString::number для преобразования
+                        qDebug() << "Current dataStr:" << dataStr;
+                    }
+
+                    bot.getApi().sendMessage(chatId, dataStr.toStdString());
+                } else if (error == "Not exist") {
+                    bot.getApi().sendMessage(chatId, "Выбранное упражнение отсутствует в базе данных");
+                } else if (error == "Error") {
+                    bot.getApi().sendMessage(chatId, "Ошибка при выполнении запроса, попробуйте позже");
+                }
             }
         }
 

@@ -2,6 +2,7 @@
 #define DBHANDLER_H
 
 #include <QSqlDatabase>
+#include <QPair>
 
 class DbHandler
 {
@@ -24,7 +25,7 @@ public:
 
     bool saveTrain(const std::int64_t tg_id, const QString& date, const QMap<QString, QList<double>> &trainInfo, QString& error);
     QMap<QString, double> trainData(const std::int64_t tg_id);
-    QMap<QString, double> trainDataForExercise(const std::int64_t tg_id, QString &exerciseName);
+    QList<QPair<QString, double>> trainDataForExercise(const std::int64_t tg_id, QString &exerciseName, QString& error);
     QList<QString> getAllExercises(const std::int64_t tg_id, QString& errorStr);
 };
 
