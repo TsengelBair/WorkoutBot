@@ -113,7 +113,7 @@ void WorkoutBot::setupCallbacks()
 
         UserState& state = userStates[chatId];
 
-        if (state.searchExerciseModeOn) {
+//        if (state.searchExerciseModeOn) {
             bool exerciseExist = findExercise(query->data);
             if (exerciseExist) {
                 /// вызов db метода с передачей query->data (это название упражнения)
@@ -124,8 +124,7 @@ void WorkoutBot::setupCallbacks()
                 if (error.isEmpty()) {
                     QString dataStr;
                     for (auto it = data.cbegin(); it != data.cend(); ++it) {
-                        dataStr += it->first + ": " + QString::number(it->second) + "\n"; // Используйте QString::number для преобразования
-                        qDebug() << "Current dataStr:" << dataStr;
+                        dataStr += it->first + ": " + QString::number(it->second) + "\n";
                     }
 
                     bot.getApi().sendMessage(chatId, dataStr.toStdString());
@@ -135,7 +134,7 @@ void WorkoutBot::setupCallbacks()
                     bot.getApi().sendMessage(chatId, "Ошибка при выполнении запроса, попробуйте позже");
                 }
             }
-        }
+//        }
 
         if (query->data == "start_training") {
             bot.getApi().sendMessage(chatId, "Добавьте упражнение", nullptr, 0, _keyboard);
@@ -201,7 +200,7 @@ void WorkoutBot::setupCallbacks()
                     btn->callbackData = exerciseName.toStdString();
                     allExercisesKeyboard->inlineKeyboard.push_back({btn});
                 }
-                state.searchExerciseModeOn = true;
+//                state.searchExerciseModeOn = true;
                 bot.getApi().sendMessage(chatId, "Упражнения:", nullptr, 0, allExercisesKeyboard);
             } else if (error == "Error") {
                 bot.getApi().sendMessage(chatId, "Ошибка при выполнении запроса, попробуйте позже");
@@ -243,7 +242,7 @@ void WorkoutBot::setupMessages()
             bot.getApi().sendMessage(chatId, "Введите название упражнения");
             state.waitForExerciseName = true;
             state.waitForSet = false;
-        } else if (state.waitForExerciseName && !state.searchExerciseModeOn){
+        } else if (state.waitForExerciseName /*&& !state.searchExerciseModeOn*/){
             if (message->text == "+ подход") {
                 bot.getApi().sendMessage(chatId, "Вы не ввели название упражнения");
                 return;
