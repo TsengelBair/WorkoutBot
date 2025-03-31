@@ -76,6 +76,20 @@ void WorkoutBot::start()
         printf("error: %s\n", e.what());
     }
 }
+
+bool WorkoutBot::findExercise(std::string &exerciseName)
+{
+    QString exerciseToFind = QString::fromStdString(exerciseName);
+    for (auto it = _exerciseNames.cbegin(); it != _exerciseNames.cend(); ++it) {
+        QString exercise = *it;
+        if (exercise == exerciseToFind) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 void WorkoutBot::setupCommands()
 {
     bot.getEvents().onCommand("start", [&](TgBot::Message::Ptr message) {
@@ -98,6 +112,13 @@ void WorkoutBot::setupCallbacks()
         }
 
         UserState& state = userStates[chatId];
+
+        if (state.searchExerciseModeOn) {
+            bool exerciseExist = findExercise(query->data);
+            if (exerciseExist) {
+                /// вызов db метода с передачей query->data (это название упражнения)
+            }
+        }
 
         if (query->data == "start_training") {
             bot.getApi().sendMessage(chatId, "Добавьте упражнение", nullptr, 0, _keyboard);
@@ -163,6 +184,7 @@ void WorkoutBot::setupCallbacks()
                     btn->callbackData = exerciseName.toStdString();
                     allExercisesKeyboard->inlineKeyboard.push_back({btn});
                 }
+                state.searchExerciseModeOn = true;
                 bot.getApi().sendMessage(chatId, "Упражнения:", nullptr, 0, allExercisesKeyboard);
             } else if (error == "Error") {
                 bot.getApi().sendMessage(chatId, "Ошибка при выполнении запроса, попробуйте позже");

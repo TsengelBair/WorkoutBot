@@ -77,6 +77,25 @@ bool DbHandler::createTables()
     return 1;
 }
 
+int DbHandler::getExerciseId(const int64_t tg_id, const QString &exerciseName)
+{
+    QSqlQuery query;
+    query.prepare("SELECT id FROM exercises WHERE tg_id = :tg_id AND exercise_name = :exerciseName");
+
+    query.bindValue(":tg_id", QVariant::fromValue(tg_id));
+    query.bindValue(":exerciseName", exerciseName);
+
+    if (!query.exec()) {
+        qDebug() << "Ошибка при select из таблицы exercises:" << query.lastError();
+        return -1;
+    }
+    if (query.next()) {
+        return query.value(0).toInt(); /// Возвращаем ID упражнения
+    }
+
+    return -1; /// ошибка
+}
+
 
 /* Функция для получения ID упражнения (либо INSERT либо возврат уже имеющегося) */
 int DbHandler::getOrInsertExerciseId(const std::int64_t tg_id, const QString &exerciseName) {
@@ -87,26 +106,16 @@ int DbHandler::getOrInsertExerciseId(const std::int64_t tg_id, const QString &ex
     query.bindValue(":exerciseName", exerciseName);
 
     if (!query.exec()) {
-        // Если ошибка, проверяем, не существует ли уже такое упражнение
+        /// Если ошибка, проверяем, не существует ли уже такое упражнение
         if (query.lastError().text().contains("UNIQUE constraint failed")) {
-            // Упражнение уже существует, получаем его ID
-            query.prepare("SELECT id FROM exercises WHERE tg_id = :tg_id AND exercise_name = :exerciseName");
-            query.bindValue(":tg_id", QVariant::fromValue(tg_id));
-            query.bindValue(":exerciseName", exerciseName);
-            if (!query.exec()) {
-                qDebug() << "Ошибка при select из таблицы exercises:" << query.lastError();
-                return -1;
-            }
-            if (query.next()) {
-                return query.value(0).toInt(); // Возвращаем ID упражнения
-            }
+            return getExerciseId(tg_id, exerciseName); /// Возвращаем ID существующего упражнения
         } else {
             qDebug() << "Ошибка при insert в таблицу exercises:" << query.lastError();
             return -1;
         }
     }
 
-    // Если вставка прошла успешно, получаем ID нового упражнения
+    /// Если вставка прошла успешно, получаем ID нового упражнения
     return query.lastInsertId().toInt();
 }
 
@@ -123,7 +132,7 @@ bool DbHandler::saveTrain(const std::int64_t tg_id, const QString &date, const Q
         return false;
     }
 
-    // Получаем ID последней вставленной записи по tg_id и workout_date
+    /// Получаем ID последней вставленной записи по tg_id и workout_date
     query.prepare("SELECT id FROM workouts WHERE tg_id = :tg_id AND workout_date = :date");
     query.bindValue(":tg_id", QVariant::fromValue(tg_id));
     query.bindValue(":date", QDate::fromString(date, "dd-MM-yyyy"));
@@ -133,22 +142,22 @@ bool DbHandler::saveTrain(const std::int64_t tg_id, const QString &date, const Q
         return false;
     }
 
-    int workoutId = -1; // Инициализируем переменную для ID тренировки
+    int workoutId = -1; /// Инициализируем переменную для ID тренировки
     if (query.next()) {
-        workoutId = query.value(0).toInt(); // Получаем ID последней вставленной записи
+        workoutId = query.value(0).toInt(); /// Получаем ID последней вставленной записи
     } else {
         qDebug() << "Не удалось получить ID последней вставленной записи";
         return false;
     }
 
-    // INSERT в таблицу с упражнениями, получаем id упражнения и выполним в цикле insertы в таблицу sets
+    /// INSERT в таблицу с упражнениями, получаем id упражнения и выполним в цикле insertы в таблицу sets
     for (const auto &exercise : trainInfo.keys()) {
         int exerciseId = getOrInsertExerciseId(tg_id, exercise);
         if (exerciseId == -1) {
             return false;
         }
 
-        // Вставляем данные в таблицу sets
+        /// Вставляем данные в таблицу sets
         for (double tonnage : trainInfo[exercise]) {
             QSqlQuery setQuery;
             setQuery.prepare("INSERT INTO sets (tg_id, workout_id, exercise_id, tonnage) VALUES (:tg_id, :workoutId, :exerciseId, :tonnage)");

@@ -24,6 +24,7 @@ private:
     void setupCommands();
     void setupCallbacks();
     void setupMessages();
+    bool findExercise(std::string& exerciseName);
 
 private:
     std::shared_ptr<TgBot::InlineKeyboardButton> btnStart;

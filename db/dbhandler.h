@@ -15,6 +15,7 @@ private:
 private:
     void openDb();
     bool createTables();
+    int getExerciseId(const std::int64_t tg_id, const QString &exerciseName);
     int getOrInsertExerciseId(const std::int64_t tg_id, const QString &exerciseName);
 
 public:
@@ -23,6 +24,7 @@ public:
 
     bool saveTrain(const std::int64_t tg_id, const QString& date, const QMap<QString, QList<double>> &trainInfo, QString& error);
     QMap<QString, double> trainData(const std::int64_t tg_id);
+    QMap<QString, double> trainDataForExercise(const std::int64_t tg_id, QString &exerciseName);
     QList<QString> getAllExercises(const std::int64_t tg_id, QString& errorStr);
 };
 
