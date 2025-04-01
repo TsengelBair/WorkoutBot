@@ -77,9 +77,9 @@ bool DbHandler::createTables()
     return 1;
 }
 
-QList<QPair<QString, double>> DbHandler::trainDataForExercise(const int64_t tg_id, QString &exerciseName, QString& error)
+QMap<QString, double> DbHandler::trainDataForExercise(const int64_t tg_id, QString &exerciseName, QString& error)
 {
-    QList<QPair<QString, double>> data;
+    QMap<QString, double> data;
 
     int exerciseID = getExerciseId(tg_id, exerciseName);
     if (exerciseID == -1) {
@@ -103,9 +103,8 @@ QList<QPair<QString, double>> DbHandler::trainDataForExercise(const int64_t tg_i
     while (query.next()) {
         QString workoutDate = query.value(0).toString();
         double totalTonnage = query.value(1).toDouble();
-        qDebug() << totalTonnage;
 
-        data.push_back(qMakePair(workoutDate, totalTonnage));
+        data.insert(workoutDate, totalTonnage);
     }
 
     return data;

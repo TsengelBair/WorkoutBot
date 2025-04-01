@@ -119,14 +119,19 @@ void WorkoutBot::setupCallbacks()
             QString error;
             QString exerciseName = QString::fromStdString(query->data);
 
-            QList<QPair<QString, double>> data = DbHandler::getInstance()->trainDataForExercise(chatId, exerciseName, error);
+            QMap<QString, double> data = DbHandler::getInstance()->trainDataForExercise(chatId, exerciseName, error);
             if (error.isEmpty()) {
                 QString dataStr;
-                for (auto it = data.cbegin(); it != data.cend(); ++it) {
-                    dataStr += it->first + ": " + QString::number(it->second) + "\n";
+                for (auto it = data.constBegin(); it != data.constEnd(); ++it){
+                    dataStr += it.key() + ": " + QString::number(it.value()) + "кг" +  "\n";
                 }
 
                 bot.getApi().sendMessage(chatId, dataStr.toStdString());
+                QScopedPointer<Chart>_chart(new Chart(chatId));
+                _chart->createPlot(data);
+                /// Для каждого пользователя будет храниться по одной картинке в директории charts, название файла -> id чата
+                QString path = "charts/" + QString::number(chatId) + ".png";
+                bot.getApi().sendPhoto(chatId, TgBot::InputFile::fromFile(path.toStdString(), "image/png"));
             } else if (error == "Not exist") {
                 bot.getApi().sendMessage(chatId, "Выбранное упражнение отсутствует в базе данных");
             } else if (error == "Error") {
