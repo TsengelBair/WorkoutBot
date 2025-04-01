@@ -113,28 +113,26 @@ void WorkoutBot::setupCallbacks()
 
         UserState& state = userStates[chatId];
 
-//        if (state.searchExerciseModeOn) {
-            bool exerciseExist = findExercise(query->data);
-            if (exerciseExist) {
-                /// вызов db метода с передачей query->data (это название упражнения)
-                QString error;
-                QString exerciseName = QString::fromStdString(query->data);
+        bool exerciseExist = findExercise(query->data);
+        if (exerciseExist) {
+            /// вызов db метода с передачей query->data (это название упражнения)
+            QString error;
+            QString exerciseName = QString::fromStdString(query->data);
 
-                QList<QPair<QString, double>> data = DbHandler::getInstance()->trainDataForExercise(chatId, exerciseName, error);
-                if (error.isEmpty()) {
-                    QString dataStr;
-                    for (auto it = data.cbegin(); it != data.cend(); ++it) {
-                        dataStr += it->first + ": " + QString::number(it->second) + "\n";
-                    }
-
-                    bot.getApi().sendMessage(chatId, dataStr.toStdString());
-                } else if (error == "Not exist") {
-                    bot.getApi().sendMessage(chatId, "Выбранное упражнение отсутствует в базе данных");
-                } else if (error == "Error") {
-                    bot.getApi().sendMessage(chatId, "Ошибка при выполнении запроса, попробуйте позже");
+            QList<QPair<QString, double>> data = DbHandler::getInstance()->trainDataForExercise(chatId, exerciseName, error);
+            if (error.isEmpty()) {
+                QString dataStr;
+                for (auto it = data.cbegin(); it != data.cend(); ++it) {
+                    dataStr += it->first + ": " + QString::number(it->second) + "\n";
                 }
+
+                bot.getApi().sendMessage(chatId, dataStr.toStdString());
+            } else if (error == "Not exist") {
+                bot.getApi().sendMessage(chatId, "Выбранное упражнение отсутствует в базе данных");
+            } else if (error == "Error") {
+                bot.getApi().sendMessage(chatId, "Ошибка при выполнении запроса, попробуйте позже");
             }
-//        }
+        }
 
         if (query->data == "start_training") {
             bot.getApi().sendMessage(chatId, "Добавьте упражнение", nullptr, 0, _keyboard);
@@ -146,7 +144,7 @@ void WorkoutBot::setupCallbacks()
             }
 
             QScopedPointer<Chart>_chart(new Chart(chatId));
-            _chart->createPlot();
+            _chart->createPlot(data);
             /// Для каждого пользователя будет храниться по одной картинке в директории charts, название файла -> id чата
             QString path = "charts/" + QString::number(chatId) + ".png";
             bot.getApi().sendPhoto(chatId, TgBot::InputFile::fromFile(path.toStdString(), "image/png"));
@@ -193,6 +191,8 @@ void WorkoutBot::setupCallbacks()
                 TgBot::InlineKeyboardMarkup::Ptr allExercisesKeyboard = std::make_shared<TgBot::InlineKeyboardMarkup>();
                 for (auto it = exercises.cbegin(); it != exercises.cend(); ++it) {
                     QString exerciseName = *it;
+                    /// _exerciseNames - сделать через set (чтобы была уникальность)
+                    /// сейчас push_back по идее может добавить дубли т.к. это список
                     _exerciseNames.push_back(exerciseName);
 
                     std::shared_ptr<TgBot::InlineKeyboardButton> btn = std::make_shared<TgBot::InlineKeyboardButton>();
@@ -200,7 +200,6 @@ void WorkoutBot::setupCallbacks()
                     btn->callbackData = exerciseName.toStdString();
                     allExercisesKeyboard->inlineKeyboard.push_back({btn});
                 }
-//                state.searchExerciseModeOn = true;
                 bot.getApi().sendMessage(chatId, "Упражнения:", nullptr, 0, allExercisesKeyboard);
             } else if (error == "Error") {
                 bot.getApi().sendMessage(chatId, "Ошибка при выполнении запроса, попробуйте позже");
@@ -242,7 +241,7 @@ void WorkoutBot::setupMessages()
             bot.getApi().sendMessage(chatId, "Введите название упражнения");
             state.waitForExerciseName = true;
             state.waitForSet = false;
-        } else if (state.waitForExerciseName /*&& !state.searchExerciseModeOn*/){
+        } else if (state.waitForExerciseName){
             if (message->text == "+ подход") {
                 bot.getApi().sendMessage(chatId, "Вы не ввели название упражнения");
                 return;

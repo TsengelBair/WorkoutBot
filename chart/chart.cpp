@@ -20,7 +20,7 @@ Chart::~Chart()
 {
 }
 
-void Chart::createPlot()
+void Chart::createPlot(QMap<QString, double> &data)
 {
     /// Установка осей для отображения даты
     _plot->setAxisScaleDraw(QwtPlot::xBottom, new QwtDateScaleDraw);
@@ -33,8 +33,6 @@ void Chart::createPlot()
 
     QwtSymbol *symbol = new QwtSymbol(QwtSymbol::Ellipse, QBrush(Qt::yellow), QPen(Qt::red, 2), QSize(8, 8));
     curve->setSymbol(symbol);
-
-    QMap<QString, double> data = DbHandler::getInstance()->trainData(_id);
 
     /// Использование QVector для хранения точек
     QVector<QPointF> points;

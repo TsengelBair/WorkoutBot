@@ -13,7 +13,7 @@ public:
     Chart(std::int64_t id, QWidget *parent = nullptr);
     ~Chart();
 
-    void createPlot();
+    void createPlot(QMap<QString, double> &data);
 
 private:
     std::int64_t _id;
