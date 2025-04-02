@@ -64,7 +64,6 @@ bool DbHandler::createTables()
 
     if (!query.exec("CREATE TABLE IF NOT EXISTS sets ("
                         "id INTEGER PRIMARY KEY AUTOINCREMENT, "
-                        "tg_id INTEGER NOT NULL, "
                         "workout_id INTEGER NOT NULL, "
                         "exercise_id INTEGER NOT NULL, "
                         "tonnage REAL NOT NULL, "
@@ -75,6 +74,36 @@ bool DbHandler::createTables()
     }
 
     return 1;
+}
+
+QMap<QString, double> DbHandler::trainData(const std::int64_t tg_id)
+{
+    QMap<QString, double> data;
+
+    QSqlQuery query;
+    QString queryStr = "SELECT workouts.workout_date, SUM(sets.tonnage) AS total_tonnage "
+                       "FROM workouts "
+                       "JOIN sets ON workouts.id = sets.workout_id "
+                       "WHERE workouts.tg_id = :tg_id "
+                       "GROUP BY workouts.workout_date "
+                       "ORDER BY workouts.workout_date;";
+
+    query.prepare(queryStr);
+    query.bindValue(":tg_id", QVariant::fromValue(tg_id));
+
+    if (!query.exec()) {
+        qDebug() << "Ошибка выполнения запроса:" << query.lastError().text();
+        return data;
+    }
+
+    while (query.next()) {
+        QString workoutDate = query.value(0).toString();
+        double totalTonnage = query.value(1).toDouble();
+
+        data.insert(workoutDate, totalTonnage);
+    }
+
+    return data;
 }
 
 QMap<QString, double> DbHandler::trainDataForExercise(const int64_t tg_id, QString &exerciseName, QString& error)
@@ -88,10 +117,15 @@ QMap<QString, double> DbHandler::trainDataForExercise(const int64_t tg_id, QStri
     }
 
     QSqlQuery query;
-    query.prepare("SELECT w.workout_date, SUM(s.tonnage) AS total_tonnage "
-                  "FROM sets s JOIN workouts w ON s.workout_id = w.id "
-                  "WHERE s.exercise_id = :exerciseID "
-                  "GROUP BY w.workout_date ORDER BY w.workout_date");
+//    query.prepare("SELECT w.workout_date, SUM(s.tonnage) AS total_tonnage "
+//                  "FROM sets s JOIN workouts w ON s.workout_id = w.id "
+//                  "WHERE s.exercise_id = :exerciseID "
+//                  "GROUP BY w.workout_date ORDER BY w.workout_date");
+
+    query.prepare("SELECT workouts.workout_date, SUM(sets.tonnage) AS total_tonnage "
+                  "FROM workouts JOIN sets ON workouts.id = sets.workout_id "
+                  "WHERE sets.exercise_id = :exerciseID "
+                  "GROUP BY workouts.workout_date ORDER BY workouts.workout_date");
 
     query.bindValue(":exerciseID", exerciseID);
 
@@ -193,51 +227,20 @@ bool DbHandler::saveTrain(const std::int64_t tg_id, const QString &date, const Q
 
         /// Вставляем данные в таблицу sets
         for (double tonnage : trainInfo[exercise]) {
-            QSqlQuery setQuery;
-            setQuery.prepare("INSERT INTO sets (tg_id, workout_id, exercise_id, tonnage) VALUES (:tg_id, :workoutId, :exerciseId, :tonnage)");
-            setQuery.bindValue(":tg_id", QVariant::fromValue(tg_id));
-            setQuery.bindValue(":workoutId", workoutId);
-            setQuery.bindValue(":exerciseId", exerciseId);
-            setQuery.bindValue(":tonnage", tonnage);
+            QSqlQuery query;
+            query.prepare("INSERT INTO sets (workout_id, exercise_id, tonnage) VALUES (:workoutId, :exerciseId, :tonnage)");
+            query.bindValue(":workoutId", workoutId);
+            query.bindValue(":exerciseId", exerciseId);
+            query.bindValue(":tonnage", tonnage);
 
-            if (!setQuery.exec()) {
-                qDebug() << "Ошибка при insert в таблицу sets:" << setQuery.lastError();
+            if (!query.exec()) {
+                qDebug() << "Ошибка при insert в таблицу sets:" << query.lastError();
                 return false;
             }
         }
     }
 
     return true;
-}
-
-QMap<QString, double> DbHandler::trainData(const std::int64_t tg_id)
-{
-    QMap<QString, double> data;
-
-    QSqlQuery query;
-    QString queryStr = "SELECT workouts.workout_date, SUM(sets.tonnage) AS total_tonnage "
-                       "FROM workouts "
-                       "JOIN sets ON workouts.id = sets.workout_id "
-                       "WHERE workouts.tg_id = :tg_id "
-                       "GROUP BY workouts.workout_date "
-                       "ORDER BY workouts.workout_date;";
-
-    query.prepare(queryStr);
-    query.bindValue(":tg_id", QVariant::fromValue(tg_id));
-
-    if (!query.exec()) {
-        qDebug() << "Ошибка выполнения запроса:" << query.lastError().text();
-        return data;
-    }
-
-    while (query.next()) {
-        QString workoutDate = query.value(0).toString();
-        double totalTonnage = query.value(1).toDouble();
-
-        data.insert(workoutDate, totalTonnage);
-    }
-
-    return data;
 }
 
 QList<QString> DbHandler::getAllExercises(const int64_t tg_id, QString& errorStr)
